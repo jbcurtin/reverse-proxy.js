@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../">
+  <title data-ice="title">Changelog</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container manual-root" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  <a href="./manual/index.html" data-ice="manualHeaderLink">Manual</a>
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  <a href="test.html" data-ice="testLink">Test</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div class="manual-toc-root">
+  
+<div data-ice="manual" data-toc-name="reference">
+    <h1 class="manual-toc-title"><a href="identifiers.html" data-ice="title">Reference</a></h1>
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1"><span class="manual-dot"></span><a href="identifiers.html#class" data-ice="link">Class</a></li>
+</ul>
+  </div>
+<div data-ice="manual" data-toc-name="changelog">
+    <h1 class="manual-toc-title"><a href="manual/changelog.html" data-ice="title">Changelog</a></h1>
+    <ul class="manual-toc">
+      
+    <li data-ice="manualNav" class="indent-h1"><span class="manual-dot"></span><a href="manual/changelog.html#changelog" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-1-0-0" data-ice="link">Version 1.0.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-7-0" data-ice="link">Version 0.7.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-6-0" data-ice="link">Version 0.6.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-5-4" data-ice="link">Version 0.5.4</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-5-3" data-ice="link">Version 0.5.3</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-5-2" data-ice="link">Version 0.5.2</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-5-1" data-ice="link">Version 0.5.1</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-5-0" data-ice="link">Version 0.5.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-4-1" data-ice="link">Version 0.4.1</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-4-0" data-ice="link">Version 0.4.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-3-0" data-ice="link">Version 0.3.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-2-1" data-ice="link">Version 0.2.1</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-2-0" data-ice="link">Version 0.2.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-1-0" data-ice="link">Version 0.1.0</a></li>
+</ul>
+  </div>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div class="github-markdown">
+  <div class="manual-breadcrumb-list">
+    <a href="./manual/./index.html">Manual</a>
+    <span>&#xBB;</span>
+    <span data-ice="title">Changelog</span>
+  </div>
+  <div data-ice="content"><h1 id="changelog">Changelog</h1>
+<p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p>
+<h2 id="version-1-0-0">Version 1.0.0</h2>
+<ul>
+<li>Breaking change: changed the HTTP status code used when an error occurred.</li>
+<li>Breaking change: ported the <a href="https://nodejs.org/api/modules.html">CommonJS</a> modules to ES2015 format.</li>
+<li>Breaking change: ported the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>-based APIs to <a href="http://reactivex.io/intro.html">Observables</a>.</li>
+<li>Breaking change: raised the required <a href="https://nodejs.org">Node.js</a> version.</li>
+<li>Breaking change: replaced the test classes by plain tests.</li>
+<li>Breaking change: the <code>Server</code> class is not anymore an <code>EventEmitter</code>.</li>
+<li>Added a build task for fixing the coding standards issues.</li>
+<li>Added the <code>onClose</code>, <code>onError</code>, <code>onListen</code> and <code>onRequest</code> event streams to the <code>Server</code> class.</li>
+<li>Replaced <a href="http://usejsdoc.org">JSDoc</a> documentation generator by <a href="https://esdoc.org">ESDoc</a>.</li>
+<li>Replaced <a href="http://jshint.com">JSHint</a> linter by <a href="http://eslint.org">ESLint</a>.</li>
+<li>Updated the package dependencies.</li>
+</ul>
+<h2 id="version-0-7-0">Version 0.7.0</h2>
+<ul>
+<li>Breaking change: renamed the <code>Server.DEFAULT_HOST</code> property to <code>DEFAULT_ADDRESS</code>.</li>
+<li>Breaking change: renamed the <code>Server.host</code> property to <code>address</code>.</li>
+<li>Breaking change: renamed the <code>-H, --host</code> command line option to <code>-a, --address</code>.</li>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-6-0">Version 0.6.0</h2>
+<ul>
+<li>Breaking change: using more ES2015 features, like default parameters and destructuring assignment.</li>
+<li>Breaking change: raised the required <a href="https://nodejs.org">Node.js</a> version.</li>
+<li>Turned the package into a <a href="https://docs.npmjs.com/getting-started/scoped-packages">scoped one</a>.</li>
+<li>Added the <code>DEFAULT_HOST</code> and <code>DEFAULT_PORT</code> constants to the <code>Server</code> class.</li>
+<li>Replaced <a href="http://www.sonarqube.org">SonarQube</a> code analyzer by <a href="https://www.codacy.com">Codacy</a> service.</li>
+</ul>
+<h2 id="version-0-5-4">Version 0.5.4</h2>
+<ul>
+<li>Fixed some bugs.</li>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-5-3">Version 0.5.3</h2>
+<ul>
+<li>Improved the way the server address is reported.</li>
+<li>The application instance is now exposed as <code>global.app</code> property.</li>
+</ul>
+<h2 id="version-0-5-2">Version 0.5.2</h2>
+<ul>
+<li>Restored support for configuration files in <a href="http://www.json.org">JSON</a> format.</li>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-5-1">Version 0.5.1</h2>
+<ul>
+<li>The <code>port</code> parameter of <code>Server.listen()</code> method is now optional.</li>
+<li>Added unit tests.</li>
+<li>Added support for code coverage.</li>
+<li>Added support for <a href="https://travis-ci.org">Travis CI</a> continuous integration.</li>
+</ul>
+<h2 id="version-0-5-0">Version 0.5.0</h2>
+<ul>
+<li>Breaking change: using ES2015 features, like arrow functions, block-scoped binding constructs, classes and template strings.</li>
+<li>Breaking change: raised the required <a href="http://nodejs.org">Node.js</a> version.</li>
+<li>Breaking change: changed the whole API of <code>Application</code> class.</li>
+<li>Breaking change: changed the format of <code>Server#request</code> event.</li>
+<li>Breaking change: changed the format of configuration files to <a href="http://yaml.org">YAML</a>.</li>
+<li>Added support for <a href="http://www.sonarqube.org">SonarQube</a> code analyzer.</li>
+<li>Changed the documentation system for <a href="http://usejsdoc.org">JSDoc</a>.</li>
+<li>Changed licensing for the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License Version 2.0</a>.</li>
+</ul>
+<h2 id="version-0-4-1">Version 0.4.1</h2>
+<ul>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-4-0">Version 0.4.0</h2>
+<ul>
+<li>Raised the required <a href="http://nodejs.org">Node.js</a> version.</li>
+<li>Removed the dependency on <a href="https://www.npmjs.com/package/promise"><code>promise</code></a> module.</li>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-3-0">Version 0.3.0</h2>
+<ul>
+<li>Breaking change: ported the callback-based API to <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promises</a>.</li>
+<li>Using <a href="http://gulpjs.com">Gulp.js</a> as build system.</li>
+<li>Fixed <a href="https://github.com/cedx/reverse-proxy.js/issues/1">GitHub issue #1</a>: using a Unix system for publishing the package on <a href="https://www.npmjs.com">npm</a>.</li>
+<li>Upgraded the package dependencies.</li>
+</ul>
+<h2 id="version-0-2-1">Version 0.2.1</h2>
+<ul>
+<li>Added <code>Application</code> class, used in CLI script.</li>
+<li>Added sample configuration files.</li>
+<li>Updated the documentation.</li>
+</ul>
+<h2 id="version-0-2-0">Version 0.2.0</h2>
+<ul>
+<li>The <code>Server</code> class and CLI now uses port 3000 as default.</li>
+<li>Added <code>Server.listening</code> event.</li>
+<li>Improved the event handling.</li>
+<li>Updated the package dependencies.</li>
+<li>Breaking change: removed <code>Server.upgrade</code> event.</li>
+<li>Using DocGen.js to generate the API reference.</li>
+</ul>
+<h2 id="version-0-1-0">Version 0.1.0</h2>
+<ul>
+<li>Initial release.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

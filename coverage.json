@@ -1,0 +1,17 @@
+{
+  "coverage": "100%",
+  "expectCount": 20,
+  "actualCount": 20,
+  "files": {
+    "src/application.js": {
+      "expectCount": 8,
+      "actualCount": 8,
+      "undocumentLines": []
+    },
+    "src/server.js": {
+      "expectCount": 12,
+      "actualCount": 12,
+      "undocumentLines": []
+    }
+  }
+}

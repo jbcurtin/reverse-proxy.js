@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">src/application.js | Reverse-Proxy.js API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  <a href="./manual/index.html" data-ice="manualHeaderLink">Manual</a>
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  <a href="test.html" data-ice="testLink">Test</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/application.js~Application.html">Application</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/server.js~Server.html">Server</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><h1 data-ice="title">src/application.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import fs from &apos;fs&apos;;
+import {Observable} from &apos;rxjs&apos;;
+import path from &apos;path&apos;;
+import * as pkg from &apos;../package.json&apos;;
+import program from &apos;commander&apos;;
+import {Server} from &apos;./server&apos;;
+import yaml from &apos;js-yaml&apos;;
+
+/**
+ * Represents an application providing functionalities specific to console requests.
+ */
+export class Application {
+
+  /**
+   * Value indicating whether the application runs in debug mode.
+   * @type {boolean}
+   */
+  get debug() {
+    return this.env == &apos;development&apos; || this.env == &apos;test&apos;;
+  }
+
+  /**
+   * The application environment.
+   * @type {string}
+   */
+  get env() {
+    return &apos;NODE_ENV&apos; in process.env ? process.env.NODE_ENV : &apos;production&apos;;
+  }
+
+  /**
+   * Loads the application configuration from the file system.
+   * @param {object} args The command line arguments.
+   * @return {Observable&lt;Array&gt;} An array of objects containing the settings of one or several reverse proxy instances.
+   */
+  loadConfig(args) {
+    if (!args.config) return Observable.of([{
+      address: args.address,
+      port: args.port,
+      target: args.target
+    }]);
+
+    let readFile = Observable.bindNodeCallback(fs.readFile);
+    return readFile(path.resolve(args.config), &apos;utf8&apos;).flatMap(data =&gt; this._parseConfig(data));
+  }
+
+  /**
+   * Prints the specified message, with a timestamp and a new line, to the standard output.
+   * @param {string|function} message The message to be logged. If it&apos;s a function, the message is the result of the function call.
+   */
+  log(message) {
+    if (!program.silent) {
+      let now = new Date().toUTCString();
+      let text = typeof message == &apos;function&apos; ? message() : message;
+      console.log(`[${now}] ${text}`);
+    }
+  }
+
+  /**
+   * Runs the application.
+   */
+  run() {
+    // Parse the command line arguments.
+    const format = {
+      asInteger: value =&gt; parseInt(value, 10),
+      asIntegerIfNumeric: value =&gt; /^\d+$/.test(value) ? parseInt(value, 10) : value
+    };
+
+    program._name = &apos;reverse-proxy&apos;;
+    program
+      .version(pkg.version, &apos;-v, --version&apos;)
+      .option(&apos;-a, --address &lt;address&gt;&apos;, `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)
+      .option(&apos;-p, --port &lt;port&gt;&apos;, `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)
+      .option(&apos;-t, --target &lt;target&gt;&apos;, &apos;location of the server the proxy will target&apos;, format.asIntegerIfNumeric)
+      .option(&apos;-c, --config &lt;path&gt;&apos;, &apos;location of the configuration file for the reverse proxy&apos;)
+      .option(&apos;-u, --user &lt;user&gt;&apos;, &apos;user to drop privileges to once server socket is bound&apos;, format.asIntegerIfNumeric)
+      .option(&apos;--silent&apos;, &apos;silence the log output from the reverse proxy&apos;);
+
+    program.parse(process.argv);
+    if (!program.config &amp;&amp; !program.target) program.help();
+
+    // Start the proxy server.
+    this.loadConfig(program)
+      .map(config =&gt; {
+        if (!config.length) throw new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;);
+        return config.map(options =&gt; new Server(options));
+      })
+      .flatMap(servers =&gt; this.startServers(servers))
+      .subscribe({
+        complete: () =&gt; {
+          if (program.user) this.setUser(program.user);
+        },
+        error: err =&gt; {
+          console.error(this.debug ? err.stack : err.message);
+          process.exit(1);
+        }
+      });
+  }
+
+  /**
+   * Sets the user identity of the application process.
+   * @param {number|string} userId The user identifier.
+   */
+  setUser(userId) {
+    if (typeof process.setuid != &apos;function&apos;) this.log(&apos;Changing the process user is not supported on this platform.&apos;);
+    else {
+      this.log(`Drop user privileges to: ${userId}`);
+      process.setuid(userId);
+    }
+  }
+
+  /**
+   * Starts the specified reverse proxy instances.
+   * @param {Server[]} servers The list of servers to start.
+   * @return {Observable} Completes when all servers have been started.
+   */
+  startServers(servers) {
+    return Observable.merge(...servers.map(server =&gt; {
+      server.onClose.subscribe(() =&gt; this.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
+      server.onError.subscribe(err =&gt; this.log(this.debug ? err.stack : err.message));
+      server.onListen.subscribe(() =&gt; this.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
+
+      server.onRequest.subscribe(req =&gt; {
+        let ipAddress = req.connection.remoteAddress;
+        let userAgent = req.headers[&apos;user-agent&apos;];
+        this.log(`${ipAddress} - ${req.headers.host} - &quot;${req.method} ${req.url} HTTP/${req.httpVersion}&quot; &quot;${userAgent}&quot;`);
+      });
+
+      return server.listen();
+    }));
+  }
+
+  /**
+   * Parses the specified configuration.
+   * @param {string} data A string specifying the application configuration.
+   * @return {Observable&lt;Array&gt;} An array of objects corresponding to the parsed configuration.
+   */
+  _parseConfig(data) {
+    data = data.trim();
+    if (!data.length) return Observable.throw(new Error(&apos;Invalid configuration data.&apos;));
+
+    return new Observable(observer =&gt; {
+      let config = [];
+      let parser = options =&gt; {
+        if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
+          throw new Error(&apos;You must provide at least a target or a route table.&apos;);
+
+        if (!(&apos;address&apos; in options)) options.address = program.address;
+        if (!(&apos;port&apos; in options)) options.port = program.port;
+
+        if (&apos;ssl&apos; in options) {
+          /* eslint-disable no-sync */
+          if (&apos;ca&apos; in options.ssl) options.ssl.ca = fs.readFileSync(options.ssl.ca);
+          if (&apos;cert&apos; in options.ssl) options.ssl.cert = fs.readFileSync(options.ssl.cert);
+          if (&apos;key&apos; in options.ssl) options.ssl.key = fs.readFileSync(options.ssl.key);
+          if (&apos;pfx&apos; in options.ssl) options.ssl.pfx = fs.readFileSync(options.ssl.pfx);
+          /* eslint-enable no-sync */
+        }
+
+        config.push(options);
+      };
+
+      try {
+        let firstChar = data[0];
+        let lastChar = data[data.length - 1];
+
+        let isJson = (firstChar == &apos;[&apos; || firstChar == &apos;{&apos;) &amp;&amp; (lastChar == &apos;]&apos; || lastChar == &apos;}&apos;);
+        if (!isJson) yaml.safeLoadAll(data, parser);
+        else {
+          let options = JSON.parse(data);
+          if (!Array.isArray(options)) options = [options];
+          options.forEach(parser);
+        }
+
+        observer.next(config);
+        observer.complete();
+      }
+
+      catch (err) {
+        observer.error(err);
+      }
+    });
+  }
+}
+</code></pre>
+
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

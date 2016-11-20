@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl" href="../../">
+  <title data-ice="title">Server | Reverse-Proxy.js API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  <a href="./manual/index.html" data-ice="manualHeaderLink">Manual</a>
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  <a href="test.html" data-ice="testLink">Test</a>
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/application.js~Application.html">Application</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/server.js~Server.html">Server</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div class="header-notice">
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Server} from &apos;<span><a href="file/src/server.js.html#lineNumber9">@cedx/reverse-proxy/src/server.js</a></span>&apos;</code></pre></div>
+  <span data-ice="access">public</span>
+  <span data-ice="kind">class</span>
+  
+  
+  
+  <span data-ice="source">| <span><a href="file/src/server.js.html#lineNumber9">source</a></span></span>
+</div>
+
+<div class="self-detail detail">
+  <h1 data-ice="name">Server</h1>
+
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+  <div class="description" data-ice="description"><p>Acts as an intermediary for requests from clients seeking resources from other servers.</p>
+</div>
+
+  
+
+  
+
+  <div data-ice="tests">
+    <h4>Test:</h4>
+    <ul>
+      
+    <li data-ice="test"><span><a href="test-file/test/server.test.js.html#lineNumber7">Server</a></span></li>
+</ul>
+  </div>
+
+  
+</div>
+
+<div data-ice="staticMemberSummary"><h2>Static Member Summary</h2><table class="summary" data-ice="summary">
+  <thead><tr><td data-ice="title" colspan="3">Static Public Members</td></tr></thead>
+  <tbody>
+  
+  <tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      <span data-ice="static">static</span>
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#static-get-DEFAULT_ADDRESS">DEFAULT_ADDRESS</a></span></span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The default address that the server is listening on.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      <span data-ice="static">static</span>
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#static-get-DEFAULT_PORT">DEFAULT_PORT</a></span></span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The default port that the server is listening on.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+</tbody>
+</table>
+</div>
+
+<div data-ice="constructorSummary"><h2>Constructor Summary</h2><table class="summary" data-ice="summary">
+  <thead><tr><td data-ice="title" colspan="3">Public Constructor</td></tr></thead>
+  <tbody>
+  
+  <tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-constructor-constructor">constructor</a></span></span><span data-ice="signature">(options: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>)</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>Initializes a new instance of the class.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+</tbody>
+</table>
+</div>
+<div data-ice="memberSummary"><h2>Member Summary</h2><table class="summary" data-ice="summary">
+  <thead><tr><td data-ice="title" colspan="3">Public Members</td></tr></thead>
+  <tbody>
+  
+  <tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-address">address</a></span></span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The address that the server is listening on.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-onClose">onClose</a></span></span><span data-ice="signature">: <span>Observable</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The stream of &quot;close&quot; events.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-onError">onError</a></span></span><span data-ice="signature">: <span>Observable</span>&lt;<span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a></span>&gt;</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The stream of &quot;error&quot; events.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-onListen">onListen</a></span></span><span data-ice="signature">: <span>Observable</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The stream of &quot;listen&quot; events.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-onRequest">onRequest</a></span></span><span data-ice="signature">: <span>Observable</span>&lt;<span>http.IncomingMessage</span>&gt;</span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The stream of &quot;request&quot; events.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-get-port">port</a></span></span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The port that the server is listening on.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+</tbody>
+</table>
+</div>
+<div data-ice="methodSummary"><h2>Method Summary</h2><table class="summary" data-ice="summary">
+  <thead><tr><td data-ice="title" colspan="3">Public Methods</td></tr></thead>
+  <tbody>
+  
+  <tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-method-close">close</a></span></span><span data-ice="signature">(): <span>Observable</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>Stops the server from accepting new connections.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+           <span data-ice="name"><span><a href="class/src/server.js~Server.html#instance-method-listen">listen</a></span></span><span data-ice="signature">(port: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, address: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>): <span>Observable</span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>Begin accepting connections.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+</tbody>
+</table>
+</div>
+
+
+
+<div data-ice="staticMemberDetails"><h2 data-ice="title">Static Public Members</h2>
+
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-get-DEFAULT_ADDRESS">
+    <span class="access" data-ice="access">public</span>
+    <span data-ice="static">static</span>
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">DEFAULT_ADDRESS</span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber15">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The default address that the server is listening on.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="static-get-DEFAULT_PORT">
+    <span class="access" data-ice="access">public</span>
+    <span data-ice="static">static</span>
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">DEFAULT_PORT</span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber23">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The default port that the server is listening on.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+</div>
+
+<div data-ice="constructorDetails"><h2 data-ice="title">Public Constructors</h2>
+
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-constructor-constructor">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    <span data-ice="name">constructor</span><span data-ice="signature">(options: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>)</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber31">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>Initializes a new instance of the class.</p>
+</div>
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" data-depth="0">options</td>
+      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span></td>
+      <td data-ice="appendix"><ul><li>optional</li></ul></td>
+      <td data-ice="description"><p>An object specifying the server settings.</p>
+</td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+</div>
+<div data-ice="memberDetails"><h2 data-ice="title">Public Members</h2>
+
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-address">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">address</span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber91">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The address that the server is listening on.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  <div data-ice="tests">
+    <h4>Test:</h4>
+    <ul>
+      
+    <li data-ice="test"><span><a href="test-file/test/server.test.js.html#lineNumber12">Server #address</a></span></li>
+</ul>
+  </div>
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-onClose">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">onClose</span><span data-ice="signature">: <span>Observable</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber99">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The stream of &quot;close&quot; events.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-onError">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">onError</span><span data-ice="signature">: <span>Observable</span>&lt;<span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a></span>&gt;</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber107">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The stream of &quot;error&quot; events.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-onListen">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">onListen</span><span data-ice="signature">: <span>Observable</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber115">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The stream of &quot;listen&quot; events.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-onRequest">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">onRequest</span><span data-ice="signature">: <span>Observable</span>&lt;<span>http.IncomingMessage</span>&gt;</span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber123">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The stream of &quot;request&quot; events.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-port">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    <span data-ice="name">port</span><span data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber131">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The port that the server is listening on.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  <div data-ice="tests">
+    <h4>Test:</h4>
+    <ul>
+      
+    <li data-ice="test"><span><a href="test-file/test/server.test.js.html#lineNumber25">Server #port</a></span></li>
+</ul>
+  </div>
+
+  
+  
+</div>
+</div>
+<div data-ice="methodDetails"><h2 data-ice="title">Public Methods</h2>
+
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-method-close">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    <span data-ice="name">close</span><span data-ice="signature">(): <span>Observable</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber140">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>Stops the server from accepting new connections. It does nothing if the server is already closed.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tr>
+        <td class="return-type" data-ice="returnType"><span>Observable</span></td>
+        <td class="return-desc" data-ice="returnDescription"><p>Completes when the server is finally closed.</p>
+</td>
+      </tr>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
+
+  <div data-ice="emitWrap">
+    <h4>Emit:</h4>
+    <table>
+      <tbody>
+      
+      <tr class="emit" data-ice="emit">
+        <td><p data-ice="emitName"><span>*</span></p></td>
+        <td data-ice="emitDesc"><p>The &quot;close&quot; event.</p>
+</td>
+      </tr>
+</tbody>
+    </table>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-method-listen">
+    <span class="access" data-ice="access">public</span>
+    
+    
+    
+    
+    <span data-ice="name">listen</span><span data-ice="signature">(port: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span>, address: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span>): <span>Observable</span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/src/server.js.html#lineNumber156">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>Begin accepting connections. Throws an error if the server has already been started.</p>
+</div>
+
+  
+
+  <div data-ice="properties"><div data-ice="properties">
+  <h4 data-ice="title">Params:</h4>
+  <table class="params">
+    <thead>
+    <tr><td>Name</td><td>Type</td><td>Attribute</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+    
+    <tr data-ice="property" data-depth="0">
+      <td data-ice="name" data-depth="0">port</td>
+      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></span></td>
+      <td data-ice="appendix"><ul><li>optional</li></ul></td>
+      <td data-ice="description"><p>The port that the server should run on.</p>
+</td>
+    </tr>
+<tr data-ice="property" data-depth="0">
+      <td data-ice="name" data-depth="0">address</td>
+      <td data-ice="type"><span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></td>
+      <td data-ice="appendix"><ul><li>optional</li></ul></td>
+      <td data-ice="description"><p>The address that the server should run on.</p>
+</td>
+    </tr>
+</tbody>
+  </table>
+</div>
+</div>
+
+  <div class="return-params" data-ice="returnParams">
+    <h4>Return:</h4>
+    <table>
+      <tr>
+        <td class="return-type" data-ice="returnType"><span>Observable</span></td>
+        <td class="return-desc" data-ice="returnDescription"><p>Completes when the server has been started.</p>
+</td>
+      </tr>
+    </table>
+    <div data-ice="returnProperties">
+</div>
+  </div>
+
+  <div data-ice="emitWrap">
+    <h4>Emit:</h4>
+    <table>
+      <tbody>
+      
+      <tr class="emit" data-ice="emit">
+        <td><p data-ice="emitName"><span>*</span></p></td>
+        <td data-ice="emitDesc"><p>The &quot;listen&quot; event.</p>
+</td>
+      </tr>
+</tbody>
+    </table>
+  </div>
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+</div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>
