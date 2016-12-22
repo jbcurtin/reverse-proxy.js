@@ -39,7 +39,10 @@
 </nav>
 
 <div class="content" data-ice="content"><h1 data-ice="title">test/server.test.js</h1>
-<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import assert from &apos;assert&apos;;
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
+
+import assert from &apos;assert&apos;;
+import {Observable, Subject} from &apos;rxjs&apos;;
 import {Server} from &apos;../src&apos;;
 
 /**
@@ -57,6 +60,73 @@ describe(&apos;Server&apos;, () =&gt; {
 
     it(&apos;should have the same host as the specified one&apos;, () =&gt; {
       assert.equal(new Server({address: &apos;localhost&apos;}).address, &apos;localhost&apos;);
+    });
+  });
+
+  /**
+   * @test {Server#listening}
+   */
+  describe(&apos;#listening&apos;, () =&gt; {
+    let server = new Server({address: &apos;127.0.0.1&apos;, port: 0});
+
+    it(&apos;should return `true` when the server is listening&apos;, done =&gt; {
+      assert.ok(!server.listening);
+      server.listen().subscribe(
+        () =&gt; assert.ok(server.listening),
+        done, done
+      );
+    });
+
+    it(&apos;should return `false` when the server is not listening&apos;, done =&gt; {
+      assert.ok(server.listening);
+      server.close().subscribe(
+        () =&gt; assert.ok(!server.listening),
+        done, done
+      );
+    });
+  });
+
+  /**
+   * @test {Server#onClose}
+   */
+  describe(&apos;#onClose&apos;, () =&gt; {
+    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
+      let stream = new Server().onClose;
+      assert.ok(stream instanceof Observable);
+      assert.ok(!(stream instanceof Subject));
+    });
+  });
+
+  /**
+   * @test {Server#onError}
+   */
+  describe(&apos;#onError&apos;, () =&gt; {
+    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
+      let stream = new Server().onError;
+      assert.ok(stream instanceof Observable);
+      assert.ok(!(stream instanceof Subject));
+    });
+  });
+
+  /**
+   * @test {Server#onListen}
+   */
+  describe(&apos;#onListen&apos;, () =&gt; {
+    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
+      let stream = new Server().onListen;
+      assert.ok(stream instanceof Observable);
+      assert.ok(!(stream instanceof Subject));
+    });
+  });
+
+  /**
+   * @test {Server#onRequest}
+   */
+  describe(&apos;#onRequest&apos;, () =&gt; {
+    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
+      let stream = new Server().onRequest;
+      assert.ok(stream instanceof Observable);
+      assert.ok(!(stream instanceof Subject));
     });
   });
 
@@ -82,7 +152,7 @@ describe(&apos;Server&apos;, () =&gt; {
     });
 
     it(&apos;it should return the &quot;Host&quot; header found in the request, without the port number&apos;, () =&gt; {
-      assert.equal(new Server()._getHostName({headers: {host: &apos;www.belin.io:8080&apos;}}), &apos;www.belin.io&apos;);
+      assert.equal(new Server()._getHostName({headers: {host: &apos;belin.io:8080&apos;}}), &apos;belin.io&apos;);
     });
   });
 });

@@ -43,6 +43,8 @@
     <ul class="manual-toc">
       
     <li data-ice="manualNav" class="indent-h1"><span class="manual-dot"></span><a href="manual/changelog.html#changelog" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-1-2-0" data-ice="link">Version 1.2.0</a></li>
+<li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-1-1-0" data-ice="link">Version 1.1.0</a></li>
 <li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-1-0-0" data-ice="link">Version 1.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-7-0" data-ice="link">Version 0.7.0</a></li>
 <li data-ice="manualNav" class="indent-h2"><span class="manual-dot"></span><a href="manual/changelog.html#version-0-6-0" data-ice="link">Version 0.6.0</a></li>
@@ -70,6 +72,15 @@
   </div>
   <div data-ice="content"><h1 id="changelog">Changelog</h1>
 <p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p>
+<h2 id="version-1-2-0">Version 1.2.0</h2>
+<ul>
+<li>Replaced the <a href="https://www.codacy.com">Codacy</a> code coverage service by the <a href="https://coveralls.io">Coveralls</a> one.</li>
+<li>Updated the package dependencies.</li>
+</ul>
+<h2 id="version-1-1-0">Version 1.1.0</h2>
+<ul>
+<li>Added the <code>Server#listening</code> property.</li>
+</ul>
 <h2 id="version-1-0-0">Version 1.0.0</h2>
 <ul>
 <li>Breaking change: changed the HTTP status code used when an error occurred.</li>
@@ -116,7 +127,7 @@
 </ul>
 <h2 id="version-0-5-1">Version 0.5.1</h2>
 <ul>
-<li>The <code>port</code> parameter of <code>Server.listen()</code> method is now optional.</li>
+<li>The <code>port</code> parameter of the <code>Server#listen</code> method is now optional.</li>
 <li>Added unit tests.</li>
 <li>Added support for code coverage.</li>
 <li>Added support for <a href="https://travis-ci.org">Travis CI</a> continuous integration.</li>
@@ -126,7 +137,7 @@
 <li>Breaking change: using ES2015 features, like arrow functions, block-scoped binding constructs, classes and template strings.</li>
 <li>Breaking change: raised the required <a href="http://nodejs.org">Node.js</a> version.</li>
 <li>Breaking change: changed the whole API of <code>Application</code> class.</li>
-<li>Breaking change: changed the format of <code>Server#request</code> event.</li>
+<li>Breaking change: changed the format of <code>Server.request</code> event.</li>
 <li>Breaking change: changed the format of configuration files to <a href="http://yaml.org">YAML</a>.</li>
 <li>Added support for <a href="http://www.sonarqube.org">SonarQube</a> code analyzer.</li>
 <li>Changed the documentation system for <a href="http://usejsdoc.org">JSDoc</a>.</li>

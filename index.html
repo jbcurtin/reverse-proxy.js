@@ -39,7 +39,7 @@
 </nav>
 
 <div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="reverse-proxy-js">Reverse-Proxy.js</h1>
-<p><img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/npm/l/@cedx/reverse-proxy.svg" alt="License"> <img src="https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg" alt="Downloads"> <img src="https://img.shields.io/david/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://img.shields.io/codacy/grade/3a6a4d53c0a244b0834a5519c777768f.svg" alt="Code quality"> <img src="https://img.shields.io/travis/cedx/reverse-proxy.js.svg" alt="Build"></p>
+<p><img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"> <img src="https://david-dm.org/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg" alt="Coverage"> <img src="https://travis-ci.org/cedx/reverse-proxy.js.svg" alt="Build"></p>
 <p>Simple reverse proxy server supporting WebSockets, implemented in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a>.</p>
 <p>Let&apos;s suppose you were running multiple HTTP application servers, but you only wanted to expose one machine to the Internet. You could setup Reverse-Proxy.js on that one machine and then reverse-proxy the incoming HTTP requests to locally running services which were not exposed to the outside network.</p>
 <h2 id="features">Features</h2>
@@ -50,6 +50,9 @@
 <li>Supports HTTPS protocol.</li>
 <li>Supports <a href="https://en.wikipedia.org/wiki/WebSocket">WebSockets</a> requests.</li>
 </ul>
+<h2 id="requirements">Requirements</h2>
+<p>The latest <a href="https://nodejs.org">Node.js</a> and <a href="https://www.npmjs.com">npm</a> versions.
+If you plan to play with the sources, you will also need the latest <a href="http://gulpjs.com">Gulp.js</a> version.</p>
 <h2 id="installing-via-npm-https-www-npmjs-com-">Installing via <a href="https://www.npmjs.com">npm</a></h2>
 <p>From a command prompt with administrator privileges, run:</p>
 <pre><code class="lang-shell"><code class="source-code prettyprint">$ npm install --global @cedx/reverse-proxy</code>
@@ -102,10 +105,11 @@ Use an asterisk (<code>*</code>) as host name to define the route matched by def
 </code></pre>
 <h2 id="configuration-schema">Configuration Schema</h2>
 <p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yml"><code>defaults.yml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
-<h2 id="see-also">See Also</h2>
+<h2 id="see-also">See also</h2>
 <ul>
-<li><a href="https://www.codacy.com/app/cedx/reverse-proxy-js">Code Quality</a></li>
-<li><a href="https://travis-ci.org/cedx/reverse-proxy.js">Continuous Integration</a></li>
+<li><a href="https://cedx.github.io/reverse-proxy.js">API reference</a></li>
+<li><a href="https://coveralls.io/github/cedx/reverse-proxy.js">Code coverage</a></li>
+<li><a href="https://travis-ci.org/cedx/reverse-proxy.js">Continuous integration</a></li>
 </ul>
 <h2 id="license">License</h2>
 <p><a href="https://github.com/cedx/reverse-proxy.js">Reverse-Proxy.js</a> is distributed under the Apache License, version 2.0.</p>
