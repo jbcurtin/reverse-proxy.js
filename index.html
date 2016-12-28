@@ -81,8 +81,8 @@ If you plan to play with the sources, you will also need the latest <a href="htt
 <pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --port 80 --target 192.168.0.1:3000
 $ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data</code>
 </code></pre>
-<p>You can also use a configuration file for the same task. See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/basic_standalone.json"><code>basic_standalone.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/basic_standalone.yml"><code>basic_standalone.yml</code></a> file in the <code>example</code> folder of this package:</p>
-<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/basic_standalone.yml</code>
+<p>You can also use a configuration file for the same task. See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/basic_standalone.json"><code>basic_standalone.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/basic_standalone.yaml"><code>basic_standalone.yaml</code></a> file in the <code>example</code> folder of this package:</p>
+<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/basic_standalone.yaml</code>
 </code></pre>
 <p>For more advanced usages, you always need to use configuration files.</p>
 <h3 id="using-https">Using HTTPS</h3>
@@ -90,21 +90,21 @@ $ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data</c
 <p>If you want the proxy server to use HTTPS protocol, you need to provide a <code>ssl</code> key in your configuration file.</p>
 <p>This object will be used as the first argument to <a href="http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener"><code>https.createServer</code></a> function when instanciating the proxy server.
 Its structure is similar to the <code>options</code> parameter of <a href="http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener"><code>tls.createServer</code></a> function.</p>
-<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/https_to_http.json"><code>https_to_http.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/https_to_http.yml"><code>https_to_http.yml</code></a> file in the <code>example</code> folder. The <code>cert</code> and <code>key</code> fields are file paths: the corresponding files are loaded by the CLI script.</p>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/https_to_http.json"><code>https_to_http.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/https_to_http.yaml"><code>https_to_http.yaml</code></a> file in the <code>example</code> folder. The <code>cert</code> and <code>key</code> fields are file paths: the corresponding files are loaded by the CLI script.</p>
 <h3 id="proxy-requests-using-a-routing-table">Proxy requests using a routing table</h3>
 <p>A routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html">HTTP <code>Host</code> header</a>.</p>
 <p>To use hostname routing, you need to provide a <code>routes</code> key in your configuration file, instead of a <code>target</code> key. The value of this key is an object where keys are hostnames and values are target locations.
 Use an asterisk (<code>*</code>) as host name to define the route matched by default when a host name is not found.</p>
-<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json"><code>routing_table.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yml"><code>routing_table.yml</code></a> file in the <code>example</code> folder of this package for a concrete example.</p>
-<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/routing_table.yml</code>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json"><code>routing_table.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml"><code>routing_table.yaml</code></a> file in the <code>example</code> folder of this package for a concrete example.</p>
+<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/routing_table.yaml</code>
 </code></pre>
 <h3 id="listening-on-multiple-ports">Listening on multiple ports</h3>
 <p>In order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.</p>
-<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json"><code>multiple_ports.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yml"><code>multiple_ports.yml</code></a> file in the <code>example</code> folder of this package for an example.</p>
-<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/multiple_ports.yml</code>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json"><code>multiple_ports.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml"><code>multiple_ports.yaml</code></a> file in the <code>example</code> folder of this package for an example.</p>
+<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/multiple_ports.yaml</code>
 </code></pre>
-<h2 id="configuration-schema">Configuration Schema</h2>
-<p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yml"><code>defaults.yml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
+<h2 id="configuration-schema">Configuration schema</h2>
+<p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml"><code>defaults.yaml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
 <h2 id="see-also">See also</h2>
 <ul>
 <li><a href="https://cedx.github.io/reverse-proxy.js">API reference</a></li>
@@ -117,7 +117,7 @@ Use an asterisk (<code>*</code>) as host name to define the route matched by def
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.4.8)</span></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>
