@@ -40,7 +40,6 @@
 
 <div class="content" data-ice="content"><h1 data-ice="title">src/application.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import fs from &apos;fs&apos;;
-import {Observable} from &apos;rxjs&apos;;
 import path from &apos;path&apos;;
 import * as pkg from &apos;../package.json&apos;;
 import program from &apos;commander&apos;;
@@ -71,17 +70,17 @@ export class Application {
   /**
    * Loads the application configuration from the file system.
    * @param {object} args The command line arguments.
-   * @return {Observable&lt;Array&gt;} An array of objects containing the settings of one or several reverse proxy instances.
+   * @return {Promise&lt;object[]&gt;} An array of objects containing the settings of one or several reverse proxy instances.
    */
-  loadConfig(args) {
-    if (!args.config) return Observable.of([{
+  async loadConfig(args) {
+    if (!args.config) return [{
       address: args.address,
       port: args.port,
       target: args.target
-    }]);
+    }];
 
-    let readFile = Observable.bindNodeCallback(fs.readFile);
-    return readFile(path.resolve(args.config), &apos;utf8&apos;).flatMap(data =&gt; this._parseConfig(data));
+    const readFile = file =&gt; new Promise(resolve =&gt; fs.readFile(file, &apos;utf8&apos;, (err, data) =&gt; resolve(err ? &apos;&apos; : data)));
+    return this._parseConfig(await readFile(path.resolve(args.config)));
   }
 
   /**
@@ -90,7 +89,7 @@ export class Application {
    */
   log(message) {
     if (!program.silent) {
-      let now = new Date().toUTCString();
+      let now = new Date().toISOString();
       let text = typeof message == &apos;function&apos; ? message() : message;
       console.log(`[${now}] ${text}`);
     }
@@ -98,8 +97,9 @@ export class Application {
 
   /**
    * Runs the application.
+   * @return {Promise} Completes when the reverse proxy has been started.
    */
-  run() {
+  async run() {
     // Parse the command line arguments.
     const format = {
       asInteger: value =&gt; parseInt(value, 10),
@@ -108,6 +108,7 @@ export class Application {
 
     program._name = &apos;reverse-proxy&apos;;
     program
+      .description(&apos;Simple reverse proxy server supporting WebSockets.&apos;)
       .version(pkg.version, &apos;-v, --version&apos;)
       .option(&apos;-a, --address &lt;address&gt;&apos;, `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)
       .option(&apos;-p, --port &lt;port&gt;&apos;, `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)
@@ -120,21 +121,20 @@ export class Application {
     if (!program.config &amp;&amp; !program.target) program.help();
 
     // Start the proxy server.
-    this.loadConfig(program)
-      .map(config =&gt; {
-        if (!config.length) throw new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;);
-        return config.map(options =&gt; new Server(options));
-      })
-      .flatMap(servers =&gt; this.startServers(servers))
-      .subscribe({
-        complete: () =&gt; {
-          if (program.user) this.setUser(program.user);
-        },
-        error: err =&gt; {
-          console.error(this.debug ? err.stack : err.message);
-          process.exit(1);
-        }
-      });
+    try {
+      let config = await this.loadConfig(program);
+      if (!config.length) throw new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;);
+
+      await this.startServers(config.map(options =&gt; new Server(options)));
+      if (program.user) this.setUser(program.user);
+    }
+
+    catch (err) {
+      console.error(this.debug ? err.stack : err.message);
+      process.exit(1);
+    }
+
+    return null;
   }
 
   /**
@@ -152,10 +152,10 @@ export class Application {
   /**
    * Starts the specified reverse proxy instances.
    * @param {Server[]} servers The list of servers to start.
-   * @return {Observable} Completes when all servers have been started.
+   * @return {Promise} Completes when all servers have been started.
    */
-  startServers(servers) {
-    return Observable.merge(...servers.map(server =&gt; {
+  async startServers(servers) {
+    return Promise.all(servers.map(server =&gt; {
       server.onClose.subscribe(() =&gt; this.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
       server.onError.subscribe(err =&gt; this.log(this.debug ? err.stack : err.message));
       server.onListen.subscribe(() =&gt; this.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
@@ -173,53 +173,44 @@ export class Application {
   /**
    * Parses the specified configuration.
    * @param {string} data A string specifying the application configuration.
-   * @return {Observable&lt;Array&gt;} An array of objects corresponding to the parsed configuration.
+   * @return {object[]} An array of objects corresponding to the parsed configuration.
    */
   _parseConfig(data) {
     data = data.trim();
-    if (!data.length) return Observable.throw(new Error(&apos;Invalid configuration data.&apos;));
+    if (!data.length) throw new Error(&apos;Invalid configuration data.&apos;);
 
-    return new Observable(observer =&gt; {
-      let config = [];
-      let parser = options =&gt; {
-        if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
-          throw new Error(&apos;You must provide at least a target or a route table.&apos;);
+    let config = [];
+    let parser = options =&gt; {
+      if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
+        throw new Error(&apos;You must provide at least a target or a route table.&apos;);
 
-        if (!(&apos;address&apos; in options)) options.address = program.address;
-        if (!(&apos;port&apos; in options)) options.port = program.port;
+      if (!(&apos;address&apos; in options)) options.address = program.address;
+      if (!(&apos;port&apos; in options)) options.port = program.port;
 
-        if (&apos;ssl&apos; in options) {
-          /* eslint-disable no-sync */
-          if (&apos;ca&apos; in options.ssl) options.ssl.ca = fs.readFileSync(options.ssl.ca);
-          if (&apos;cert&apos; in options.ssl) options.ssl.cert = fs.readFileSync(options.ssl.cert);
-          if (&apos;key&apos; in options.ssl) options.ssl.key = fs.readFileSync(options.ssl.key);
-          if (&apos;pfx&apos; in options.ssl) options.ssl.pfx = fs.readFileSync(options.ssl.pfx);
-          /* eslint-enable no-sync */
-        }
-
-        config.push(options);
-      };
-
-      try {
-        let firstChar = data[0];
-        let lastChar = data[data.length - 1];
-
-        let isJson = (firstChar == &apos;[&apos; || firstChar == &apos;{&apos;) &amp;&amp; (lastChar == &apos;]&apos; || lastChar == &apos;}&apos;);
-        if (!isJson) yaml.safeLoadAll(data, parser);
-        else {
-          let options = JSON.parse(data);
-          if (!Array.isArray(options)) options = [options];
-          options.forEach(parser);
-        }
-
-        observer.next(config);
-        observer.complete();
+      if (&apos;ssl&apos; in options) {
+        /* eslint-disable no-sync */
+        if (&apos;ca&apos; in options.ssl) options.ssl.ca = fs.readFileSync(options.ssl.ca);
+        if (&apos;cert&apos; in options.ssl) options.ssl.cert = fs.readFileSync(options.ssl.cert);
+        if (&apos;key&apos; in options.ssl) options.ssl.key = fs.readFileSync(options.ssl.key);
+        if (&apos;pfx&apos; in options.ssl) options.ssl.pfx = fs.readFileSync(options.ssl.pfx);
+        /* eslint-enable no-sync */
       }
 
-      catch (err) {
-        observer.error(err);
-      }
-    });
+      config.push(options);
+    };
+
+    let firstChar = data[0];
+    let lastChar = data[data.length - 1];
+
+    let isJson = (firstChar == &apos;[&apos; || firstChar == &apos;{&apos;) &amp;&amp; (lastChar == &apos;]&apos; || lastChar == &apos;}&apos;);
+    if (!isJson) yaml.safeLoadAll(data, parser);
+    else {
+      let options = JSON.parse(data);
+      if (!Array.isArray(options)) options = [options];
+      options.forEach(parser);
+    }
+
+    return config;
   }
 }
 </code></pre>
@@ -227,7 +218,7 @@ export class Application {
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>

@@ -13,97 +13,97 @@ window.esdocSearchIndex = [
   ],
   [
     "application src/application.js~application,application",
-    "test-file/test/application.test.js.html#lineNumber9",
+    "test-file/test/application_test.js.html#lineNumber9",
     "Application",
     "test"
   ],
   [
     "application#_parseconfig application#_parseconfig,application#_parseconfig",
-    "test-file/test/application.test.js.html#lineNumber91",
+    "test-file/test/application_test.js.html#lineNumber70",
     "Application #_parseConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber99",
+    "test-file/test/application_test.js.html#lineNumber82",
     "Application #_parseConfig() should completes with an array if the parsed JSON configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber119",
+    "test-file/test/application_test.js.html#lineNumber101",
     "Application #_parseConfig() should completes with an array if the parsed YAML configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber92",
+    "test-file/test/application_test.js.html#lineNumber71",
     "Application #_parseConfig() should throw an error if the parsed JSON configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber112",
+    "test-file/test/application_test.js.html#lineNumber90",
     "Application #_parseConfig() should throw an error if the parsed YAML configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "application#debug src/application.js~application#debug,application#debug",
-    "test-file/test/application.test.js.html#lineNumber14",
+    "test-file/test/application_test.js.html#lineNumber14",
     "Application #debug",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber15",
+    "test-file/test/application_test.js.html#lineNumber15",
     "Application #debug should be `false` in production environment",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber20",
+    "test-file/test/application_test.js.html#lineNumber20",
     "Application #debug should be `true` in development environment",
     "test"
   ],
   [
     "application#env src/application.js~application#env,application#env",
-    "test-file/test/application.test.js.html#lineNumber29",
+    "test-file/test/application_test.js.html#lineNumber29",
     "Application #env",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber30",
+    "test-file/test/application_test.js.html#lineNumber30",
     "Application #env should be \"production\" if the NODE_ENV environment variable is not set",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber35",
+    "test-file/test/application_test.js.html#lineNumber35",
     "Application #env should equal the value of `NODE_ENV` environment variable when it is set",
     "test"
   ],
   [
     "application#loadconfig src/application.js~application#loadconfig,application#loadconfig",
-    "test-file/test/application.test.js.html#lineNumber44",
+    "test-file/test/application_test.js.html#lineNumber44",
     "Application #loadConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber59",
+    "test-file/test/application_test.js.html#lineNumber52",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified in the JSON configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber73",
+    "test-file/test/application_test.js.html#lineNumber59",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified in the YAML configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application.test.js.html#lineNumber45",
+    "test-file/test/application_test.js.html#lineNumber45",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified on the command line arguments",
     "test"
   ],
@@ -439,127 +439,121 @@ window.esdocSearchIndex = [
   ],
   [
     "server src/server.js~server,server",
-    "test-file/test/server.test.js.html#lineNumber10",
+    "test-file/test/server_test.js.html#lineNumber10",
     "Server",
     "test"
   ],
   [
     "server#_gethostname server#_gethostname,server#_gethostname",
-    "test-file/test/server.test.js.html#lineNumber108",
+    "test-file/test/server_test.js.html#lineNumber99",
     "Server #_getHostName()",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber109",
+    "test-file/test/server_test.js.html#lineNumber100",
     "Server #_getHostName() it should return \"*\" if there is no \"Host\" header in the request",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber113",
+    "test-file/test/server_test.js.html#lineNumber104",
     "Server #_getHostName() it should return the \"Host\" header found in the request, without the port number",
     "test"
   ],
   [
     "server#address src/server.js~server#address,server#address",
-    "test-file/test/server.test.js.html#lineNumber15",
+    "test-file/test/server_test.js.html#lineNumber15",
     "Server #address",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber16",
+    "test-file/test/server_test.js.html#lineNumber16",
     "Server #address should have an \"any IPv4\" address as the default address",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber20",
+    "test-file/test/server_test.js.html#lineNumber20",
     "Server #address should have the same host as the specified one",
     "test"
   ],
   [
     "server#listening src/server.js~server#listening,server#listening",
-    "test-file/test/server.test.js.html#lineNumber28",
+    "test-file/test/server_test.js.html#lineNumber28",
     "Server #listening",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber39",
-    "Server #listening should return `false` when the server is not listening",
-    "test"
-  ],
-  [
-    "",
-    "test-file/test/server.test.js.html#lineNumber31",
-    "Server #listening should return `true` when the server is listening",
+    "test-file/test/server_test.js.html#lineNumber29",
+    "Server #listening should return whether the server is listening",
     "test"
   ],
   [
     "server#onclose src/server.js~server#onclose,server#onclose",
-    "test-file/test/server.test.js.html#lineNumber51",
+    "test-file/test/server_test.js.html#lineNumber42",
     "Server #onClose",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber52",
+    "test-file/test/server_test.js.html#lineNumber43",
     "Server #onClose should return an Observable instead of the underlying Subject",
     "test"
   ],
   [
     "server#onerror src/server.js~server#onerror,server#onerror",
-    "test-file/test/server.test.js.html#lineNumber62",
+    "test-file/test/server_test.js.html#lineNumber53",
     "Server #onError",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber63",
+    "test-file/test/server_test.js.html#lineNumber54",
     "Server #onError should return an Observable instead of the underlying Subject",
     "test"
   ],
   [
     "server#onlisten src/server.js~server#onlisten,server#onlisten",
-    "test-file/test/server.test.js.html#lineNumber73",
+    "test-file/test/server_test.js.html#lineNumber64",
     "Server #onListen",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber74",
+    "test-file/test/server_test.js.html#lineNumber65",
     "Server #onListen should return an Observable instead of the underlying Subject",
     "test"
   ],
   [
     "server#onrequest src/server.js~server#onrequest,server#onrequest",
-    "test-file/test/server.test.js.html#lineNumber84",
+    "test-file/test/server_test.js.html#lineNumber75",
     "Server #onRequest",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber85",
+    "test-file/test/server_test.js.html#lineNumber76",
     "Server #onRequest should return an Observable instead of the underlying Subject",
     "test"
   ],
   [
     "server#port src/server.js~server#port,server#port",
-    "test-file/test/server.test.js.html#lineNumber95",
+    "test-file/test/server_test.js.html#lineNumber86",
     "Server #port",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber96",
+    "test-file/test/server_test.js.html#lineNumber87",
     "Server #port should have 3000 as the default port",
     "test"
   ],
   [
     "",
-    "test-file/test/server.test.js.html#lineNumber100",
+    "test-file/test/server_test.js.html#lineNumber91",
     "Server #port should have the same port as the specified one",
     "test"
   ],
@@ -696,15 +690,15 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "test/application.test.js",
-    "test-file/test/application.test.js.html",
-    "test/application.test.js",
+    "test/application_test.js",
+    "test-file/test/application_test.js.html",
+    "test/application_test.js",
     "testFile"
   ],
   [
-    "test/server.test.js",
-    "test-file/test/server.test.js.html",
-    "test/server.test.js",
+    "test/server_test.js",
+    "test-file/test/server_test.js.html",
+    "test/server_test.js",
     "testFile"
   ]
 ]
