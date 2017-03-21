@@ -118,11 +118,7 @@ export class Server {
 
     // Normalize the routing table.
     let routes = this._options.routes;
-    for (let host in routes) {
-      let target = routes[host];
-      if (typeof target == &apos;number&apos;) routes[host] = `http://127.0.0.1:${target}`;
-      else if (!/^https?:/i.test(target)) routes[host] = `http://${target}`;
-    }
+    for (let host in routes) routes[host] = this._normalizeRoute(routes[host]);
   }
 
   /**
@@ -130,6 +126,7 @@ export class Server {
    * @type {string}
    */
   get address() {
+    if (this.listening) return this._httpService.address().address;
     return typeof this._options.address == &apos;string&apos; ? this._options.address : Server.DEFAULT_ADDRESS;
   }
 
@@ -178,6 +175,7 @@ export class Server {
    * @type {number}
    */
   get port() {
+    if (this.listening) return this._httpService.address().port;
     return typeof this._options.port == &apos;number&apos; ? this._options.port : Server.DEFAULT_PORT;
   }
 
@@ -212,26 +210,22 @@ export class Server {
       this._httpService.on(&apos;error&apos;, err =&gt; this._onError.next(err));
       this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
 
-      await new Promise(resolve =&gt; this._httpService.listen(port &gt; 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
-        let socket = this._httpService.address();
-        this._options.address = socket.address;
-        this._options.port = socket.port;
-
+      await new Promise(resolve =&gt; this._httpService.listen(port &gt;= 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
         this._onListen.next();
         resolve();
       }));
     }
 
-    return this._options.port;
+    return this.port;
   }
 
   /**
    * Gets the host name contained in the headers of the specified request.
-   * @param {http.IncomingMessage} req The request sent by the client.
+   * @param {http.IncomingMessage} request The request sent by the client.
    * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.
    */
-  _getHostName(req) {
-    let headers = req.headers;
+  _getHostName(request) {
+    let headers = request.headers;
     if (!(&apos;host&apos; in headers)) return &apos;*&apos;;
 
     let index = headers.host.indexOf(&apos;:&apos;);
@@ -239,58 +233,97 @@ export class Server {
   }
 
   /**
+   * Normalizes the specified route.
+   * @param {*} route The route to normalize.
+   * @return {object} The normalized route.
+   * @throws {Error} The route has an invalid format.
+   */
+  _normalizeRoute(route) {
+    let value = typeof route == &apos;object&apos; &amp;&amp; route ? route : {uri: route};
+
+    switch (typeof value.uri) {
+      case &apos;number&apos;:
+        value.uri = `http://127.0.0.1:${value.uri}`;
+        break;
+
+      case &apos;string&apos;:
+        if (!/^https?:/i.test(value.uri)) value.uri = `http://${value.uri}`;
+        break;
+
+      default:
+        throw new Error(&apos;The value has an invalid format.&apos;);
+    }
+
+    if (typeof value.headers != &apos;object&apos; || !value.headers) value.headers = {};
+    else {
+      let map = {};
+      for (let key in value.headers) map[key.toLowerCase()] = value.headers[key];
+      value.headers = map;
+    }
+
+    return value;
+  }
+
+  /**
    * Handles an HTTP request to a target.
-   * @param {http.IncomingMessage} req The request sent by the client.
-   * @param {http.ServerResponse} res The response sent by the server.
+   * @param {http.IncomingMessage} request The request sent by the client.
+   * @param {http.ServerResponse} response The response sent by the server.
    * @emits {http.IncomingMessage} The &quot;request&quot; event.
    */
-  _onHTTPRequest(req, res) {
-    this._onRequest.next(req);
+  _onHTTPRequest(request, response) {
+    this._onRequest.next(request);
 
-    let hostName = this._getHostName(req);
+    let hostName = this._getHostName(request);
     let host = hostName in this._options.routes ? hostName : &apos;*&apos;;
-
-    if (host in this._options.routes) this._proxyService.web(req, res, {target: this._options.routes[host]});
-    else this._sendStatus(res, 404);
+    if (!(host in this._options.routes)) this._sendStatus(response, 404);
+    else {
+      let target = this._options.routes[host];
+      Object.assign(request.headers, target.headers);
+      this._proxyService.web(request, response, {target: target.uri});
+    }
   }
 
   /**
    * Handles the error emitted if a request to a target fails.
-   * @param {Error} err The emitted error event.
-   * @param {http.IncomingMessage} req The request sent by the client.
-   * @param {http.ServerResponse} res The response sent by the server.
+   * @param {Error} error The emitted error event.
+   * @param {http.IncomingMessage} request The request sent by the client.
+   * @param {http.ServerResponse} response The response sent by the server.
    * @emits {Error} The &quot;error&quot; event.
    */
-  _onRequestError(err, req, res) {
-    this._onError.next(err);
-    this._sendStatus(res, 502);
+  _onRequestError(error, request, response) {
+    this._onError.next(error);
+    this._sendStatus(response, 502);
   }
 
   /**
    * Handles a WebSocket request to a target.
-   * @param {http.IncomingMessage} req The request sent by the client.
+   * @param {http.IncomingMessage} request The request sent by the client.
    * @param {net.Socket} socket The network socket between the server and client.
    * @param {Buffer} head The first packet of the upgraded stream.
    */
-  _onWSRequest(req, socket, head) {
-    let hostName = this._getHostName(req);
+  _onWSRequest(request, socket, head) {
+    let hostName = this._getHostName(request);
     let host = hostName in this._options.routes ? hostName : &apos;*&apos;;
-    if (host in this._options.routes) this._proxyService.ws(req, socket, head, {target: this._options.routes[host]});
+    if (host in this._options.routes) {
+      let target = this._options.routes[host];
+      Object.assign(request.headers, target.headers);
+      this._proxyService.ws(request, socket, head, {target: target.uri});
+    }
   }
 
   /**
    * Sends an HTTP status code and terminates the specified server response.
-   * @param {http.ServerResponse} res The server response.
+   * @param {http.ServerResponse} response The server response.
    * @param {number} statusCode The HTTP status code to send.
    */
-  _sendStatus(res, statusCode) {
+  _sendStatus(response, statusCode) {
     let message = http.STATUS_CODES[statusCode];
-    res.writeHead(statusCode, {
+    response.writeHead(statusCode, {
       &apos;Content-Length&apos;: Buffer.byteLength(message),
       &apos;Content-Type&apos;: &apos;text/plain&apos;
     });
 
-    res.end(message);
+    response.end(message);
   }
 }
 </code></pre>

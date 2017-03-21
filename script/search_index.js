@@ -462,6 +462,36 @@ window.esdocSearchIndex = [
     "test"
   ],
   [
+    "server#_normalizeroute server#_normalizeroute,server#_normalizeroute",
+    "test-file/test/server_test.js.html#lineNumber112",
+    "Server #_normalizeRoute()",
+    "test"
+  ],
+  [
+    "",
+    "test-file/test/server_test.js.html#lineNumber113",
+    "Server #_normalizeRoute() it should normalize a port on the local host",
+    "test"
+  ],
+  [
+    "",
+    "test-file/test/server_test.js.html#lineNumber118",
+    "Server #_normalizeRoute() it should normalize an authority",
+    "test"
+  ],
+  [
+    "",
+    "test-file/test/server_test.js.html#lineNumber123",
+    "Server #_normalizeRoute() it should normalize an origin",
+    "test"
+  ],
+  [
+    "",
+    "test-file/test/server_test.js.html#lineNumber128",
+    "Server #_normalizeRoute() it should throw an error if the route has an invalid format",
+    "test"
+  ],
+  [
     "server#address src/server.js~server#address,server#address",
     "test-file/test/server_test.js.html#lineNumber15",
     "Server #address",

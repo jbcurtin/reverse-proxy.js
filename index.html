@@ -86,7 +86,14 @@ $ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data</c
 <p>You can also use a configuration file for the same task. See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/basic_standalone.json"><code>basic_standalone.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/basic_standalone.yaml"><code>basic_standalone.yaml</code></a> file in the <code>example</code> folder of this package:</p>
 <pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/basic_standalone.yaml</code>
 </code></pre>
-<p>For more advanced usages, you always need to use configuration files.</p>
+<p>For more advanced usages, you <strong>always</strong> need to use configuration files.</p>
+<blockquote>
+<p>A target server can be expressed in two possible ways in the configuration file:</p>
+<ul>
+<li>a string or a number representing an URI: <code>3000</code> (a port of the local host), <code>&quot;domain.com:8080&quot;</code> (an authority) or <code>&quot;http://domain.com:8080&quot;</code> (an origin).</li>
+<li>an object with a <code>uri</code> property having the same format: <code>{&quot;uri&quot;: 3000}</code>, <code>{&quot;uri&quot;: &quot;domain.com:8080&quot;}</code> or <code>{&quot;uri&quot;: &quot;http://domain.com:8080&quot;}</code>.</li>
+</ul>
+</blockquote>
 <h3 id="using-https">Using HTTPS</h3>
 <p>A common use-case for proxying in conjunction with HTTPS is that you have some front-facing HTTPS server, but all of your internal traffic is HTTP. In this way, you can reduce the number of servers to which your CA and other important security files are deployed and reduce the computational overhead from HTTPS traffic.</p>
 <p>If you want the proxy server to use HTTPS protocol, you need to provide a <code>ssl</code> key in your configuration file.</p>
@@ -97,14 +104,18 @@ Its structure is similar to the <code>options</code> parameter of <a href="http:
 <p>A routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html">HTTP <code>Host</code> header</a>.</p>
 <p>To use hostname routing, you need to provide a <code>routes</code> key in your configuration file, instead of a <code>target</code> key. The value of this key is an object where keys are hostnames and values are target locations.
 Use an asterisk (<code>*</code>) as host name to define the route matched by default when a host name is not found.</p>
-<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json"><code>routing_table.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml"><code>routing_table.yaml</code></a> file in the <code>example</code> folder of this package for a concrete example.</p>
-<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/routing_table.yaml</code>
-</code></pre>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json"><code>routing_table.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml"><code>routing_table.yaml</code></a> file in the <code>example</code> folder.</p>
 <h3 id="listening-on-multiple-ports">Listening on multiple ports</h3>
 <p>In order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.</p>
-<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json"><code>multiple_ports.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml"><code>multiple_ports.yaml</code></a> file in the <code>example</code> folder of this package for an example.</p>
-<pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --config example/yaml/multiple_ports.yaml</code>
-</code></pre>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json"><code>multiple_ports.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml"><code>multiple_ports.yaml</code></a> file in the <code>example</code> folder.</p>
+<h3 id="adding-http-headers-to-the-proxied-requests">Adding HTTP headers to the proxied requests</h3>
+<p>It can sometimes be useful to add some HTTP headers to the requests sent to the target servers.</p>
+<p>Let say that you have a remote service that needs basic authentication, but that you want to expose publicly. You could add an <code>Authorization</code> header to the proxied requests in order to let the remote service accept these requests.</p>
+<p>To add an header to all the proxied requests of a target, you must use the object notation for this target, and a <code>headers</code> subproperty providing a map of the HTTP headers to set.</p>
+<blockquote>
+<p>The HTTP headers defined in this way will replace <strong>any</strong> existing header with the same name.</p>
+</blockquote>
+<p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/http_headers.json"><code>http_headers.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/http_headers.yaml"><code>http_headers.yaml</code></a> file in the <code>example</code> folder.</p>
 <h2 id="configuration-schema">Configuration schema</h2>
 <p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml"><code>defaults.yaml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
 <h2 id="see-also">See also</h2>

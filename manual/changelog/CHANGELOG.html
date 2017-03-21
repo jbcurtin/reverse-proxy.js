@@ -41,7 +41,9 @@
 <div data-ice="manual" data-toc-name="changelog">
     <ul class="manual-toc">
       
-    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html" data-ice="link">Changelog</a></li>
+    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-2-0" data-ice="link">Version 2.2.0</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-1-0" data-ice="link">Version 2.1.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-0-0" data-ice="link">Version 2.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-1-2-0" data-ice="link">Version 1.2.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-1-1-0" data-ice="link">Version 1.1.0</a></li>
@@ -72,6 +74,16 @@
   </div>
   <div data-ice="content"><h1 id="changelog">Changelog</h1>
 <p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p>
+<h2 id="version-2-2-0">Version 2.2.0</h2>
+<ul>
+<li>Added support of HTTP headers: feature request from <a href="https://github.com/cedx/reverse-proxy.js/issues/4">issue #4</a>.</li>
+<li>Fixed a bug in the reading of the SSL certificates.</li>
+</ul>
+<h2 id="version-2-1-0">Version 2.1.0</h2>
+<ul>
+<li>Using asynchronous file access in <code>Application#_parseConfig</code> method.</li>
+<li>Updated the package dependencies.</li>
+</ul>
 <h2 id="version-2-0-0">Version 2.0.0</h2>
 <ul>
 <li>Breaking change: raised the required <a href="https://nodejs.org">Node.js</a> version.</li>
@@ -109,7 +121,7 @@
 <h2 id="version-0-7-0">Version 0.7.0</h2>
 <ul>
 <li>Breaking change: renamed the <code>Server.DEFAULT_HOST</code> property to <code>DEFAULT_ADDRESS</code>.</li>
-<li>Breaking change: renamed the <code>Server.host</code> property to <code>address</code>.</li>
+<li>Breaking change: renamed the <code>Server#host</code> property to <code>address</code>.</li>
 <li>Breaking change: renamed the <code>-H, --host</code> command line option to <code>-a, --address</code>.</li>
 <li>Upgraded the package dependencies.</li>
 </ul>
@@ -148,7 +160,7 @@
 <li>Breaking change: using ES2015 features, like arrow functions, block-scoped binding constructs, classes and template strings.</li>
 <li>Breaking change: raised the required <a href="http://nodejs.org">Node.js</a> version.</li>
 <li>Breaking change: changed the whole API of <code>Application</code> class.</li>
-<li>Breaking change: changed the format of <code>Server.request</code> event.</li>
+<li>Breaking change: changed the format of <code>Server#request</code> event.</li>
 <li>Breaking change: changed the format of configuration files to <a href="http://yaml.org">YAML</a>.</li>
 <li>Added support for <a href="http://www.sonarqube.org">SonarQube</a> code analyzer.</li>
 <li>Changed the documentation system for <a href="http://usejsdoc.org">JSDoc</a>.</li>
@@ -180,10 +192,10 @@
 <h2 id="version-0-2-0">Version 0.2.0</h2>
 <ul>
 <li>The <code>Server</code> class and CLI now uses port 3000 as default.</li>
-<li>Added <code>Server.listening</code> event.</li>
+<li>Added <code>Server#listening</code> event.</li>
 <li>Improved the event handling.</li>
 <li>Updated the package dependencies.</li>
-<li>Breaking change: removed <code>Server.upgrade</code> event.</li>
+<li>Breaking change: removed <code>Server#upgrade</code> event.</li>
 <li>Using DocGen.js to generate the API reference.</li>
 </ul>
 <h2 id="version-0-1-0">Version 0.1.0</h2>

@@ -146,6 +146,30 @@ describe(&apos;Server&apos;, () =&gt; {
       expect(new Server()._getHostName({headers: {host: &apos;belin.io:8080&apos;}})).to.equal(&apos;belin.io&apos;);
     });
   });
+
+  /**
+   * @test {Server#_normalizeRoute}
+   */
+  describe(&apos;#_normalizeRoute()&apos;, () =&gt; {
+    it(&apos;it should normalize a port on the local host&apos;, () =&gt; {
+      expect(new Server()._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
+      expect(new Server()._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
+    });
+
+    it(&apos;it should normalize an authority&apos;, () =&gt; {
+      expect(new Server()._normalizeRoute(&apos;domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
+      expect(new Server()._normalizeRoute({uri: &apos;domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
+    });
+
+    it(&apos;it should normalize an origin&apos;, () =&gt; {
+      expect(new Server()._normalizeRoute(&apos;https://domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
+      expect(new Server()._normalizeRoute({uri: &apos;https://domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
+    });
+
+    it(&apos;it should throw an error if the route has an invalid format&apos;, () =&gt; {
+      expect(() =&gt; new Server()._normalizeRoute([])).to.throw();
+    });
+  });
 });
 </code></pre>
 
