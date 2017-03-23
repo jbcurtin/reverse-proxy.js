@@ -42,7 +42,6 @@
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
 import {expect} from &apos;chai&apos;;
-import {Observable, Subject} from &apos;rxjs&apos;;
 import {Server} from &apos;../src/index&apos;;
 
 /**
@@ -74,50 +73,6 @@ describe(&apos;Server&apos;, () =&gt; {
       expect(server.listening).to.be.true;
       await server.close();
       expect(server.listening).to.be.false;
-    });
-  });
-
-  /**
-   * @test {Server#onClose}
-   */
-  describe(&apos;#onClose&apos;, () =&gt; {
-    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
-      let stream = new Server().onClose;
-      expect(stream).to.be.instanceof(Observable);
-      expect(stream).to.not.be.instanceof(Subject);
-    });
-  });
-
-  /**
-   * @test {Server#onError}
-   */
-  describe(&apos;#onError&apos;, () =&gt; {
-    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
-      let stream = new Server().onError;
-      expect(stream).to.be.instanceof(Observable);
-      expect(stream).to.not.be.instanceof(Subject);
-    });
-  });
-
-  /**
-   * @test {Server#onListen}
-   */
-  describe(&apos;#onListen&apos;, () =&gt; {
-    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
-      let stream = new Server().onListen;
-      expect(stream).to.be.instanceof(Observable);
-      expect(stream).to.not.be.instanceof(Subject);
-    });
-  });
-
-  /**
-   * @test {Server#onRequest}
-   */
-  describe(&apos;#onRequest&apos;, () =&gt; {
-    it(&apos;should return an Observable instead of the underlying Subject&apos;, () =&gt; {
-      let stream = new Server().onRequest;
-      expect(stream).to.be.instanceof(Observable);
-      expect(stream).to.not.be.instanceof(Subject);
     });
   });
 

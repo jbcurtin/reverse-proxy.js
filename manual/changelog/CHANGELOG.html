@@ -42,6 +42,7 @@
     <ul class="manual-toc">
       
     <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-3-0-0" data-ice="link">Version 3.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-2-0" data-ice="link">Version 2.2.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-1-0" data-ice="link">Version 2.1.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-0-0" data-ice="link">Version 2.0.0</a></li>
@@ -74,6 +75,12 @@
   </div>
   <div data-ice="content"><h1 id="changelog">Changelog</h1>
 <p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p>
+<h2 id="version-3-0-0">Version 3.0.0</h2>
+<ul>
+<li>Breaking change: dropped the dependency on <a href="http://reactivex.io/intro.html">Observables</a>.</li>
+<li>Breaking change: renamed the <code>listen</code> event to <code>listening</code>.</li>
+<li>Breaking change: the <code>Server</code> class is now an <a href="https://nodejs.org/api/events.html#events_class_eventemitter">EventEmitter</a>.</li>
+</ul>
 <h2 id="version-2-2-0">Version 2.2.0</h2>
 <ul>
 <li>Added support of HTTP headers: feature request from <a href="https://github.com/cedx/reverse-proxy.js/issues/4">issue #4</a>.</li>
@@ -111,7 +118,7 @@
 <li>Breaking change: ported the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>-based APIs to <a href="http://reactivex.io/intro.html">Observables</a>.</li>
 <li>Breaking change: raised the required <a href="https://nodejs.org">Node.js</a> version.</li>
 <li>Breaking change: replaced the test classes by plain tests.</li>
-<li>Breaking change: the <code>Server</code> class is not anymore an <code>EventEmitter</code>.</li>
+<li>Breaking change: the <code>Server</code> class is not anymore an <a href="https://nodejs.org/api/events.html#events_class_eventemitter">EventEmitter</a>.</li>
 <li>Added a build task for fixing the coding standards issues.</li>
 <li>Added the <code>onClose</code>, <code>onError</code>, <code>onListen</code> and <code>onRequest</code> event streams to the <code>Server</code> class.</li>
 <li>Replaced <a href="http://usejsdoc.org">JSDoc</a> documentation generator by <a href="https://esdoc.org">ESDoc</a>.</li>

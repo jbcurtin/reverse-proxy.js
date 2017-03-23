@@ -39,15 +39,15 @@
 </nav>
 
 <div class="content" data-ice="content"><h1 data-ice="title">src/server.js</h1>
-<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import http from &apos;http&apos;;
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import EventEmitter from &apos;events&apos;;
+import http from &apos;http&apos;;
 import https from &apos;https&apos;;
 import httpProxy from &apos;http-proxy&apos;;
-import {Subject} from &apos;rxjs&apos;;
 
 /**
  * Acts as an intermediary for requests from clients seeking resources from other servers.
  */
-export class Server {
+export class Server extends EventEmitter {
 
   /**
    * The default address that the server is listening on.
@@ -70,36 +70,13 @@ export class Server {
    * @param {object} [options] An object specifying the server settings.
    */
   constructor(options = {}) {
+    super();
 
     /**
      * The underlying HTTP(S) service listening for requests.
      * @type {http.Server|https.Server}
      */
     this._httpService = null;
-
-    /**
-     * The handler of &quot;close&quot; events.
-     * @type {Subject}
-     */
-    this._onClose = new Subject();
-
-    /**
-     * The handler of &quot;error&quot; events.
-     * @type {Subject&lt;Error&gt;}
-     */
-    this._onError = new Subject();
-
-    /**
-     * The handler of &quot;listen&quot; events.
-     * @type {Subject}
-     */
-    this._onListen = new Subject();
-
-    /**
-     * The handler of &quot;request&quot; events.
-     * @type {Subject&lt;http.IncomingMessage&gt;}
-     */
-    this._onRequest = new Subject();
 
     /**
      * The server settings.
@@ -139,38 +116,6 @@ export class Server {
   }
 
   /**
-   * The stream of &quot;close&quot; events.
-   * @type {Observable}
-   */
-  get onClose() {
-    return this._onClose.asObservable();
-  }
-
-  /**
-   * The stream of &quot;error&quot; events.
-   * @type {Observable&lt;Error&gt;}
-   */
-  get onError() {
-    return this._onError.asObservable();
-  }
-
-  /**
-   * The stream of &quot;listen&quot; events.
-   * @type {Observable}
-   */
-  get onListen() {
-    return this._onListen.asObservable();
-  }
-
-  /**
-   * The stream of &quot;request&quot; events.
-   * @type {Observable&lt;http.IncomingMessage&gt;}
-   */
-  get onRequest() {
-    return this._onRequest.asObservable();
-  }
-
-  /**
    * The port that the server is listening on.
    * @type {number}
    */
@@ -187,7 +132,7 @@ export class Server {
   async close() {
     if (this.listening) await new Promise(resolve =&gt; this._httpService.close(() =&gt; {
       this._httpService = null;
-      this._onClose.next();
+      this.emit(&apos;close&apos;);
       resolve();
     }));
 
@@ -199,7 +144,7 @@ export class Server {
    * @param {number} [port] The port that the server should run on.
    * @param {string} [address] The address that the server should run on.
    * @return {Promise&lt;number&gt;} The port that the server is running on.
-   * @emits {*} The &quot;listen&quot; event.
+   * @emits {*} The &quot;listening&quot; event.
    */
   async listen(port = -1, address = &apos;&apos;) {
     if (!this.listening) {
@@ -211,7 +156,7 @@ export class Server {
       this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
 
       await new Promise(resolve =&gt; this._httpService.listen(port &gt;= 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
-        this._onListen.next();
+        this.emit(&apos;listening&apos;);
         resolve();
       }));
     }
@@ -271,7 +216,7 @@ export class Server {
    * @emits {http.IncomingMessage} The &quot;request&quot; event.
    */
   _onHTTPRequest(request, response) {
-    this._onRequest.next(request);
+    this.emit(&apos;request&apos;, request);
 
     let hostName = this._getHostName(request);
     let host = hostName in this._options.routes ? hostName : &apos;*&apos;;
@@ -291,7 +236,7 @@ export class Server {
    * @emits {Error} The &quot;error&quot; event.
    */
   _onRequestError(error, request, response) {
-    this._onError.next(error);
+    this.emit(&apos;error&apos;, error);
     this._sendStatus(response, 502);
   }
 

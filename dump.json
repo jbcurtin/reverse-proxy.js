@@ -3,7 +3,7 @@
     "__docId__": 0,
     "kind": "file",
     "name": "src/application.js",
-    "content": "import fs from 'fs';\nimport path from 'path';\nimport * as pkg from '../package.json';\nimport program from 'commander';\nimport {Server} from './server';\nimport yaml from 'js-yaml';\n\n/**\n * Represents an application providing functionalities specific to console requests.\n */\nexport class Application {\n\n  /**\n   * Value indicating whether the application runs in debug mode.\n   * @type {boolean}\n   */\n  get debug() {\n    return this.env == 'development' || this.env == 'test';\n  }\n\n  /**\n   * The application environment.\n   * @type {string}\n   */\n  get env() {\n    return 'NODE_ENV' in process.env ? process.env.NODE_ENV : 'production';\n  }\n\n  /**\n   * Loads the application configuration from the file system.\n   * @param {object} args The command line arguments.\n   * @return {Promise<object[]>} An array of objects containing the settings of one or several reverse proxy instances.\n   */\n  async loadConfig(args) {\n    if (!args.config) return [{\n      address: args.address,\n      port: args.port,\n      target: args.target\n    }];\n\n    const readFile = file => new Promise(resolve => fs.readFile(file, 'utf8', (err, data) => resolve(err ? '' : data)));\n    return this._parseConfig(await readFile(path.resolve(args.config)));\n  }\n\n  /**\n   * Prints the specified message, with a timestamp and a new line, to the standard output.\n   * @param {string|function} message The message to be logged. If it's a function, the message is the result of the function call.\n   */\n  log(message) {\n    if (!program.silent) {\n      let now = new Date().toISOString();\n      let text = typeof message == 'function' ? message() : message;\n      console.log(`[${now}] ${text}`);\n    }\n  }\n\n  /**\n   * Runs the application.\n   * @return {Promise} Completes when the reverse proxy has been started.\n   */\n  async run() {\n    // Parse the command line arguments.\n    const format = {\n      asInteger: value => parseInt(value, 10),\n      asIntegerIfNumeric: value => /^\\d+$/.test(value) ? parseInt(value, 10) : value\n    };\n\n    program._name = 'reverse-proxy';\n    program\n      .description('Simple reverse proxy server supporting WebSockets.')\n      .version(pkg.version, '-v, --version')\n      .option('-a, --address <address>', `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)\n      .option('-p, --port <port>', `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)\n      .option('-t, --target <target>', 'location of the server the proxy will target', format.asIntegerIfNumeric)\n      .option('-c, --config <path>', 'location of the configuration file for the reverse proxy')\n      .option('-u, --user <user>', 'user to drop privileges to once server socket is bound', format.asIntegerIfNumeric)\n      .option('--silent', 'silence the log output from the reverse proxy');\n\n    program.parse(process.argv);\n    if (!program.config && !program.target) program.help();\n\n    // Start the proxy server.\n    try {\n      let config = await this.loadConfig(program);\n      if (!config.length) throw new Error('Unable to find any configuration for the reverse proxy.');\n\n      await this.startServers(config.map(options => new Server(options)));\n      if (program.user) this.setUser(program.user);\n    }\n\n    catch (err) {\n      console.error(this.debug ? err.stack : err.message);\n      process.exit(1);\n    }\n\n    return null;\n  }\n\n  /**\n   * Sets the user identity of the application process.\n   * @param {number|string} userId The user identifier.\n   */\n  setUser(userId) {\n    if (typeof process.setuid != 'function') this.log('Changing the process user is not supported on this platform.');\n    else {\n      this.log(`Drop user privileges to: ${userId}`);\n      process.setuid(userId);\n    }\n  }\n\n  /**\n   * Starts the specified reverse proxy instances.\n   * @param {Server[]} servers The list of servers to start.\n   * @return {Promise} Completes when all servers have been started.\n   */\n  async startServers(servers) {\n    return Promise.all(servers.map(server => {\n      server.onClose.subscribe(() => this.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));\n      server.onError.subscribe(err => this.log(this.debug ? err.stack : err.message));\n      server.onListen.subscribe(() => this.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));\n\n      server.onRequest.subscribe(req => {\n        let ipAddress = req.connection.remoteAddress;\n        let userAgent = req.headers['user-agent'];\n        this.log(`${ipAddress} - ${req.headers.host} - \"${req.method} ${req.url} HTTP/${req.httpVersion}\" \"${userAgent}\"`);\n      });\n\n      return server.listen();\n    }));\n  }\n\n  /**\n   * Parses the specified configuration.\n   * @param {string} data A string specifying the application configuration.\n   * @return {Promise<object[]>} An array of objects corresponding to the parsed configuration.\n   */\n  async _parseConfig(data) {\n    data = data.trim();\n    if (!data.length) throw new Error('Invalid configuration data.');\n\n    /* eslint-disable no-extra-parens */\n    let firstChar = data[0];\n    let lastChar = data[data.length - 1];\n    let isJson = (firstChar == '[' && lastChar == ']') || (firstChar == '{' && lastChar == '}');\n    /* eslint-enable no-extra-parens */\n\n    let config;\n    if (!isJson) {\n      config = [];\n      yaml.safeLoadAll(data, options => config.push(options));\n    }\n    else {\n      config = JSON.parse(data);\n      if (!Array.isArray(config)) config = [config];\n    }\n\n    const readFile = file => new Promise((resolve, reject) => fs.readFile(file, (err, data) => {\n      if (err) reject(err);\n      else resolve(data);\n    }));\n\n    for (let options of config) {\n      if (!('routes' in options) && !('target' in options))\n        throw new Error('You must provide at least a target or a route table.');\n\n      if (!('address' in options)) options.address = program.address;\n      if (!('port' in options)) options.port = program.port;\n\n      if ('ssl' in options) {\n        let keys = ['ca', 'cert', 'key', 'pfx'].filter(cert => cert in options.ssl);\n        let certs = await Promise.all(keys.map(cert => readFile(options.ssl[cert])));\n        for (let i = 0; i < keys.length; i++) options.ssl[keys[i]] = certs[i];\n      }\n    }\n\n    return config;\n  }\n}\n",
+    "content": "import fs from 'fs';\nimport path from 'path';\nimport * as pkg from '../package.json';\nimport program from 'commander';\nimport {Server} from './server';\nimport yaml from 'js-yaml';\n\n/**\n * Represents an application providing functionalities specific to console requests.\n */\nexport class Application {\n\n  /**\n   * Value indicating whether the application runs in debug mode.\n   * @type {boolean}\n   */\n  get debug() {\n    return this.env == 'development' || this.env == 'test';\n  }\n\n  /**\n   * The application environment.\n   * @type {string}\n   */\n  get env() {\n    return 'NODE_ENV' in process.env ? process.env.NODE_ENV : 'production';\n  }\n\n  /**\n   * Loads the application configuration from the file system.\n   * @param {object} args The command line arguments.\n   * @return {Promise<object[]>} An array of objects containing the settings of one or several reverse proxy instances.\n   */\n  async loadConfig(args) {\n    if (!args.config) return [{\n      address: args.address,\n      port: args.port,\n      target: args.target\n    }];\n\n    const readFile = file => new Promise(resolve => fs.readFile(file, 'utf8', (err, data) => resolve(err ? '' : data)));\n    return this._parseConfig(await readFile(path.resolve(args.config)));\n  }\n\n  /**\n   * Prints the specified message, with a timestamp and a new line, to the standard output.\n   * @param {string|function} message The message to be logged. If it's a function, the message is the result of the function call.\n   */\n  log(message) {\n    if (!program.silent) {\n      let now = new Date().toISOString();\n      let text = typeof message == 'function' ? message() : message;\n      console.log(`[${now}] ${text}`);\n    }\n  }\n\n  /**\n   * Runs the application.\n   * @return {Promise} Completes when the reverse proxy has been started.\n   */\n  async run() {\n    // Parse the command line arguments.\n    const format = {\n      asInteger: value => parseInt(value, 10),\n      asIntegerIfNumeric: value => /^\\d+$/.test(value) ? parseInt(value, 10) : value\n    };\n\n    program._name = 'reverse-proxy';\n    program\n      .description('Simple reverse proxy server supporting WebSockets.')\n      .version(pkg.version, '-v, --version')\n      .option('-a, --address <address>', `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)\n      .option('-p, --port <port>', `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)\n      .option('-t, --target <target>', 'location of the server the proxy will target', format.asIntegerIfNumeric)\n      .option('-c, --config <path>', 'location of the configuration file for the reverse proxy')\n      .option('-u, --user <user>', 'user to drop privileges to once server socket is bound', format.asIntegerIfNumeric)\n      .option('--silent', 'silence the log output from the reverse proxy');\n\n    program.parse(process.argv);\n    if (!program.config && !program.target) program.help();\n\n    // Start the proxy server.\n    try {\n      let config = await this.loadConfig(program);\n      if (!config.length) throw new Error('Unable to find any configuration for the reverse proxy.');\n\n      await this.startServers(config.map(options => new Server(options)));\n      if (program.user) this.setUser(program.user);\n    }\n\n    catch (err) {\n      console.error(this.debug ? err.stack : err.message);\n      process.exit(1);\n    }\n\n    return null;\n  }\n\n  /**\n   * Sets the user identity of the application process.\n   * @param {number|string} userId The user identifier.\n   */\n  setUser(userId) {\n    if (typeof process.setuid != 'function') this.log('Changing the process user is not supported on this platform.');\n    else {\n      this.log(`Drop user privileges to: ${userId}`);\n      process.setuid(userId);\n    }\n  }\n\n  /**\n   * Starts the specified reverse proxy instances.\n   * @param {Server[]} servers The list of servers to start.\n   * @return {Promise} Completes when all servers have been started.\n   */\n  async startServers(servers) {\n    return Promise.all(servers.map(server => {\n      server.on('close', () => this.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));\n      server.on('error', error => this.log(this.debug ? error.stack : error.message));\n      server.on('listening', () => this.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));\n\n      server.on('request', request => {\n        let ipAddress = request.connection.remoteAddress;\n        let userAgent = request.headers['user-agent'];\n        this.log(`${ipAddress} - ${request.headers.host} - \"${request.method} ${request.url} HTTP/${request.httpVersion}\" \"${userAgent}\"`);\n      });\n\n      return server.listen();\n    }));\n  }\n\n  /**\n   * Parses the specified configuration.\n   * @param {string} data A string specifying the application configuration.\n   * @return {Promise<object[]>} An array of objects corresponding to the parsed configuration.\n   */\n  async _parseConfig(data) {\n    data = data.trim();\n    if (!data.length) throw new Error('Invalid configuration data.');\n\n    /* eslint-disable no-extra-parens */\n    let firstChar = data[0];\n    let lastChar = data[data.length - 1];\n    let isJson = (firstChar == '[' && lastChar == ']') || (firstChar == '{' && lastChar == '}');\n    /* eslint-enable no-extra-parens */\n\n    let config;\n    if (!isJson) {\n      config = [];\n      yaml.safeLoadAll(data, options => config.push(options));\n    }\n    else {\n      config = JSON.parse(data);\n      if (!Array.isArray(config)) config = [config];\n    }\n\n    const readFile = file => new Promise((resolve, reject) => fs.readFile(file, (err, data) => {\n      if (err) reject(err);\n      else resolve(data);\n    }));\n\n    for (let options of config) {\n      if (!('routes' in options) && !('target' in options))\n        throw new Error('You must provide at least a target or a route table.');\n\n      if (!('address' in options)) options.address = program.address;\n      if (!('port' in options)) options.port = program.port;\n\n      if ('ssl' in options) {\n        let keys = ['ca', 'cert', 'key', 'pfx'].filter(cert => cert in options.ssl);\n        let certs = await Promise.all(keys.map(cert => readFile(options.ssl[cert])));\n        for (let i = 0; i < keys.length; i++) options.ssl[keys[i]] = certs[i];\n      }\n    }\n\n    return config;\n  }\n}\n",
     "static": true,
     "longname": "src/application.js",
     "access": null,
@@ -255,7 +255,7 @@
     "__docId__": 11,
     "kind": "file",
     "name": "src/server.js",
-    "content": "import http from 'http';\nimport https from 'https';\nimport httpProxy from 'http-proxy';\nimport {Subject} from 'rxjs';\n\n/**\n * Acts as an intermediary for requests from clients seeking resources from other servers.\n */\nexport class Server {\n\n  /**\n   * The default address that the server is listening on.\n   * @type {string}\n   */\n  static get DEFAULT_ADDRESS() {\n    return '0.0.0.0';\n  }\n\n  /**\n   * The default port that the server is listening on.\n   * @type {number}\n   */\n  static get DEFAULT_PORT() {\n    return 3000;\n  }\n\n  /**\n   * Initializes a new instance of the class.\n   * @param {object} [options] An object specifying the server settings.\n   */\n  constructor(options = {}) {\n\n    /**\n     * The underlying HTTP(S) service listening for requests.\n     * @type {http.Server|https.Server}\n     */\n    this._httpService = null;\n\n    /**\n     * The handler of \"close\" events.\n     * @type {Subject}\n     */\n    this._onClose = new Subject();\n\n    /**\n     * The handler of \"error\" events.\n     * @type {Subject<Error>}\n     */\n    this._onError = new Subject();\n\n    /**\n     * The handler of \"listen\" events.\n     * @type {Subject}\n     */\n    this._onListen = new Subject();\n\n    /**\n     * The handler of \"request\" events.\n     * @type {Subject<http.IncomingMessage>}\n     */\n    this._onRequest = new Subject();\n\n    /**\n     * The server settings.\n     * @type {object}\n     */\n    this._options = options;\n    if (!('routes' in this._options)) this._options.routes = {};\n    if ('target' in this._options) this._options.routes['*'] = this._options.target;\n\n    /**\n     * The underlying proxy service providing custom application logic.\n     * @type {httpProxy.Server}\n     */\n    this._proxyService = httpProxy.createProxyServer(this._options.proxy || {});\n    this._proxyService.on('error', this._onRequestError.bind(this));\n\n    // Normalize the routing table.\n    let routes = this._options.routes;\n    for (let host in routes) routes[host] = this._normalizeRoute(routes[host]);\n  }\n\n  /**\n   * The address that the server is listening on.\n   * @type {string}\n   */\n  get address() {\n    if (this.listening) return this._httpService.address().address;\n    return typeof this._options.address == 'string' ? this._options.address : Server.DEFAULT_ADDRESS;\n  }\n\n  /**\n   * Value indicating whether the server is currently listening.\n   * @type {boolean}\n   */\n  get listening() {\n    return Boolean(this._httpService && this._httpService.listening);\n  }\n\n  /**\n   * The stream of \"close\" events.\n   * @type {Observable}\n   */\n  get onClose() {\n    return this._onClose.asObservable();\n  }\n\n  /**\n   * The stream of \"error\" events.\n   * @type {Observable<Error>}\n   */\n  get onError() {\n    return this._onError.asObservable();\n  }\n\n  /**\n   * The stream of \"listen\" events.\n   * @type {Observable}\n   */\n  get onListen() {\n    return this._onListen.asObservable();\n  }\n\n  /**\n   * The stream of \"request\" events.\n   * @type {Observable<http.IncomingMessage>}\n   */\n  get onRequest() {\n    return this._onRequest.asObservable();\n  }\n\n  /**\n   * The port that the server is listening on.\n   * @type {number}\n   */\n  get port() {\n    if (this.listening) return this._httpService.address().port;\n    return typeof this._options.port == 'number' ? this._options.port : Server.DEFAULT_PORT;\n  }\n\n  /**\n   * Stops the server from accepting new connections. It does nothing if the server is already closed.\n   * @return {Promise} Completes when the server is finally closed.\n   * @emits {*} The \"close\" event.\n   */\n  async close() {\n    if (this.listening) await new Promise(resolve => this._httpService.close(() => {\n      this._httpService = null;\n      this._onClose.next();\n      resolve();\n    }));\n\n    return null;\n  }\n\n  /**\n   * Begin accepting connections. It does nothing if the server is already started.\n   * @param {number} [port] The port that the server should run on.\n   * @param {string} [address] The address that the server should run on.\n   * @return {Promise<number>} The port that the server is running on.\n   * @emits {*} The \"listen\" event.\n   */\n  async listen(port = -1, address = '') {\n    if (!this.listening) {\n      this._httpService = 'ssl' in this._options ?\n        https.createServer(this._options.ssl, this._onHTTPRequest.bind(this)) :\n        http.createServer(this._onHTTPRequest.bind(this));\n\n      this._httpService.on('error', err => this._onError.next(err));\n      this._httpService.on('upgrade', this._onWSRequest.bind(this));\n\n      await new Promise(resolve => this._httpService.listen(port >= 0 ? port : this.port, address.length ? address : this.address, () => {\n        this._onListen.next();\n        resolve();\n      }));\n    }\n\n    return this.port;\n  }\n\n  /**\n   * Gets the host name contained in the headers of the specified request.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.\n   */\n  _getHostName(request) {\n    let headers = request.headers;\n    if (!('host' in headers)) return '*';\n\n    let index = headers.host.indexOf(':');\n    return index < 0 ? headers.host : headers.host.substr(0, index);\n  }\n\n  /**\n   * Normalizes the specified route.\n   * @param {*} route The route to normalize.\n   * @return {object} The normalized route.\n   * @throws {Error} The route has an invalid format.\n   */\n  _normalizeRoute(route) {\n    let value = typeof route == 'object' && route ? route : {uri: route};\n\n    switch (typeof value.uri) {\n      case 'number':\n        value.uri = `http://127.0.0.1:${value.uri}`;\n        break;\n\n      case 'string':\n        if (!/^https?:/i.test(value.uri)) value.uri = `http://${value.uri}`;\n        break;\n\n      default:\n        throw new Error('The value has an invalid format.');\n    }\n\n    if (typeof value.headers != 'object' || !value.headers) value.headers = {};\n    else {\n      let map = {};\n      for (let key in value.headers) map[key.toLowerCase()] = value.headers[key];\n      value.headers = map;\n    }\n\n    return value;\n  }\n\n  /**\n   * Handles an HTTP request to a target.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {http.ServerResponse} response The response sent by the server.\n   * @emits {http.IncomingMessage} The \"request\" event.\n   */\n  _onHTTPRequest(request, response) {\n    this._onRequest.next(request);\n\n    let hostName = this._getHostName(request);\n    let host = hostName in this._options.routes ? hostName : '*';\n    if (!(host in this._options.routes)) this._sendStatus(response, 404);\n    else {\n      let target = this._options.routes[host];\n      Object.assign(request.headers, target.headers);\n      this._proxyService.web(request, response, {target: target.uri});\n    }\n  }\n\n  /**\n   * Handles the error emitted if a request to a target fails.\n   * @param {Error} error The emitted error event.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {http.ServerResponse} response The response sent by the server.\n   * @emits {Error} The \"error\" event.\n   */\n  _onRequestError(error, request, response) {\n    this._onError.next(error);\n    this._sendStatus(response, 502);\n  }\n\n  /**\n   * Handles a WebSocket request to a target.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {net.Socket} socket The network socket between the server and client.\n   * @param {Buffer} head The first packet of the upgraded stream.\n   */\n  _onWSRequest(request, socket, head) {\n    let hostName = this._getHostName(request);\n    let host = hostName in this._options.routes ? hostName : '*';\n    if (host in this._options.routes) {\n      let target = this._options.routes[host];\n      Object.assign(request.headers, target.headers);\n      this._proxyService.ws(request, socket, head, {target: target.uri});\n    }\n  }\n\n  /**\n   * Sends an HTTP status code and terminates the specified server response.\n   * @param {http.ServerResponse} response The server response.\n   * @param {number} statusCode The HTTP status code to send.\n   */\n  _sendStatus(response, statusCode) {\n    let message = http.STATUS_CODES[statusCode];\n    response.writeHead(statusCode, {\n      'Content-Length': Buffer.byteLength(message),\n      'Content-Type': 'text/plain'\n    });\n\n    response.end(message);\n  }\n}\n",
+    "content": "import EventEmitter from 'events';\nimport http from 'http';\nimport https from 'https';\nimport httpProxy from 'http-proxy';\n\n/**\n * Acts as an intermediary for requests from clients seeking resources from other servers.\n */\nexport class Server extends EventEmitter {\n\n  /**\n   * The default address that the server is listening on.\n   * @type {string}\n   */\n  static get DEFAULT_ADDRESS() {\n    return '0.0.0.0';\n  }\n\n  /**\n   * The default port that the server is listening on.\n   * @type {number}\n   */\n  static get DEFAULT_PORT() {\n    return 3000;\n  }\n\n  /**\n   * Initializes a new instance of the class.\n   * @param {object} [options] An object specifying the server settings.\n   */\n  constructor(options = {}) {\n    super();\n\n    /**\n     * The underlying HTTP(S) service listening for requests.\n     * @type {http.Server|https.Server}\n     */\n    this._httpService = null;\n\n    /**\n     * The server settings.\n     * @type {object}\n     */\n    this._options = options;\n    if (!('routes' in this._options)) this._options.routes = {};\n    if ('target' in this._options) this._options.routes['*'] = this._options.target;\n\n    /**\n     * The underlying proxy service providing custom application logic.\n     * @type {httpProxy.Server}\n     */\n    this._proxyService = httpProxy.createProxyServer(this._options.proxy || {});\n    this._proxyService.on('error', this._onRequestError.bind(this));\n\n    // Normalize the routing table.\n    let routes = this._options.routes;\n    for (let host in routes) routes[host] = this._normalizeRoute(routes[host]);\n  }\n\n  /**\n   * The address that the server is listening on.\n   * @type {string}\n   */\n  get address() {\n    if (this.listening) return this._httpService.address().address;\n    return typeof this._options.address == 'string' ? this._options.address : Server.DEFAULT_ADDRESS;\n  }\n\n  /**\n   * Value indicating whether the server is currently listening.\n   * @type {boolean}\n   */\n  get listening() {\n    return Boolean(this._httpService && this._httpService.listening);\n  }\n\n  /**\n   * The port that the server is listening on.\n   * @type {number}\n   */\n  get port() {\n    if (this.listening) return this._httpService.address().port;\n    return typeof this._options.port == 'number' ? this._options.port : Server.DEFAULT_PORT;\n  }\n\n  /**\n   * Stops the server from accepting new connections. It does nothing if the server is already closed.\n   * @return {Promise} Completes when the server is finally closed.\n   * @emits {*} The \"close\" event.\n   */\n  async close() {\n    if (this.listening) await new Promise(resolve => this._httpService.close(() => {\n      this._httpService = null;\n      this.emit('close');\n      resolve();\n    }));\n\n    return null;\n  }\n\n  /**\n   * Begin accepting connections. It does nothing if the server is already started.\n   * @param {number} [port] The port that the server should run on.\n   * @param {string} [address] The address that the server should run on.\n   * @return {Promise<number>} The port that the server is running on.\n   * @emits {*} The \"listening\" event.\n   */\n  async listen(port = -1, address = '') {\n    if (!this.listening) {\n      this._httpService = 'ssl' in this._options ?\n        https.createServer(this._options.ssl, this._onHTTPRequest.bind(this)) :\n        http.createServer(this._onHTTPRequest.bind(this));\n\n      this._httpService.on('error', err => this._onError.next(err));\n      this._httpService.on('upgrade', this._onWSRequest.bind(this));\n\n      await new Promise(resolve => this._httpService.listen(port >= 0 ? port : this.port, address.length ? address : this.address, () => {\n        this.emit('listening');\n        resolve();\n      }));\n    }\n\n    return this.port;\n  }\n\n  /**\n   * Gets the host name contained in the headers of the specified request.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.\n   */\n  _getHostName(request) {\n    let headers = request.headers;\n    if (!('host' in headers)) return '*';\n\n    let index = headers.host.indexOf(':');\n    return index < 0 ? headers.host : headers.host.substr(0, index);\n  }\n\n  /**\n   * Normalizes the specified route.\n   * @param {*} route The route to normalize.\n   * @return {object} The normalized route.\n   * @throws {Error} The route has an invalid format.\n   */\n  _normalizeRoute(route) {\n    let value = typeof route == 'object' && route ? route : {uri: route};\n\n    switch (typeof value.uri) {\n      case 'number':\n        value.uri = `http://127.0.0.1:${value.uri}`;\n        break;\n\n      case 'string':\n        if (!/^https?:/i.test(value.uri)) value.uri = `http://${value.uri}`;\n        break;\n\n      default:\n        throw new Error('The value has an invalid format.');\n    }\n\n    if (typeof value.headers != 'object' || !value.headers) value.headers = {};\n    else {\n      let map = {};\n      for (let key in value.headers) map[key.toLowerCase()] = value.headers[key];\n      value.headers = map;\n    }\n\n    return value;\n  }\n\n  /**\n   * Handles an HTTP request to a target.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {http.ServerResponse} response The response sent by the server.\n   * @emits {http.IncomingMessage} The \"request\" event.\n   */\n  _onHTTPRequest(request, response) {\n    this.emit('request', request);\n\n    let hostName = this._getHostName(request);\n    let host = hostName in this._options.routes ? hostName : '*';\n    if (!(host in this._options.routes)) this._sendStatus(response, 404);\n    else {\n      let target = this._options.routes[host];\n      Object.assign(request.headers, target.headers);\n      this._proxyService.web(request, response, {target: target.uri});\n    }\n  }\n\n  /**\n   * Handles the error emitted if a request to a target fails.\n   * @param {Error} error The emitted error event.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {http.ServerResponse} response The response sent by the server.\n   * @emits {Error} The \"error\" event.\n   */\n  _onRequestError(error, request, response) {\n    this.emit('error', error);\n    this._sendStatus(response, 502);\n  }\n\n  /**\n   * Handles a WebSocket request to a target.\n   * @param {http.IncomingMessage} request The request sent by the client.\n   * @param {net.Socket} socket The network socket between the server and client.\n   * @param {Buffer} head The first packet of the upgraded stream.\n   */\n  _onWSRequest(request, socket, head) {\n    let hostName = this._getHostName(request);\n    let host = hostName in this._options.routes ? hostName : '*';\n    if (host in this._options.routes) {\n      let target = this._options.routes[host];\n      Object.assign(request.headers, target.headers);\n      this._proxyService.ws(request, socket, head, {target: target.uri});\n    }\n  }\n\n  /**\n   * Sends an HTTP status code and terminates the specified server response.\n   * @param {http.ServerResponse} response The server response.\n   * @param {number} statusCode The HTTP status code to send.\n   */\n  _sendStatus(response, statusCode) {\n    let message = http.STATUS_CODES[statusCode];\n    response.writeHead(statusCode, {\n      'Content-Length': Buffer.byteLength(message),\n      'Content-Type': 'text/plain'\n    });\n\n    response.end(message);\n  }\n}\n",
     "static": true,
     "longname": "src/server.js",
     "access": null,
@@ -275,7 +275,10 @@
     "importStyle": "{Server}",
     "description": "Acts as an intermediary for requests from clients seeking resources from other servers.",
     "lineNumber": 9,
-    "interface": false
+    "interface": false,
+    "extends": [
+      "events~EventEmitter"
+    ]
   },
   {
     "__docId__": 13,
@@ -353,7 +356,7 @@
     "longname": "src/server.js~Server#_httpService",
     "access": null,
     "description": "The underlying HTTP(S) service listening for requests.",
-    "lineNumber": 37,
+    "lineNumber": 38,
     "type": {
       "nullable": null,
       "types": [
@@ -367,89 +370,13 @@
   {
     "__docId__": 17,
     "kind": "member",
-    "name": "_onClose",
-    "memberof": "src/server.js~Server",
-    "static": false,
-    "longname": "src/server.js~Server#_onClose",
-    "access": null,
-    "description": "The handler of \"close\" events.",
-    "lineNumber": 43,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 18,
-    "kind": "member",
-    "name": "_onError",
-    "memberof": "src/server.js~Server",
-    "static": false,
-    "longname": "src/server.js~Server#_onError",
-    "access": null,
-    "description": "The handler of \"error\" events.",
-    "lineNumber": 49,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject<Error>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 19,
-    "kind": "member",
-    "name": "_onListen",
-    "memberof": "src/server.js~Server",
-    "static": false,
-    "longname": "src/server.js~Server#_onListen",
-    "access": null,
-    "description": "The handler of \"listen\" events.",
-    "lineNumber": 55,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 20,
-    "kind": "member",
-    "name": "_onRequest",
-    "memberof": "src/server.js~Server",
-    "static": false,
-    "longname": "src/server.js~Server#_onRequest",
-    "access": null,
-    "description": "The handler of \"request\" events.",
-    "lineNumber": 61,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject<http.IncomingMessage>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 21,
-    "kind": "member",
     "name": "_options",
     "memberof": "src/server.js~Server",
     "static": false,
     "longname": "src/server.js~Server#_options",
     "access": null,
     "description": "The server settings.",
-    "lineNumber": 67,
+    "lineNumber": 44,
     "type": {
       "nullable": null,
       "types": [
@@ -460,7 +387,7 @@
     }
   },
   {
-    "__docId__": 22,
+    "__docId__": 18,
     "kind": "member",
     "name": "_proxyService",
     "memberof": "src/server.js~Server",
@@ -468,7 +395,7 @@
     "longname": "src/server.js~Server#_proxyService",
     "access": null,
     "description": "The underlying proxy service providing custom application logic.",
-    "lineNumber": 75,
+    "lineNumber": 52,
     "type": {
       "nullable": null,
       "types": [
@@ -479,7 +406,7 @@
     }
   },
   {
-    "__docId__": 23,
+    "__docId__": 19,
     "kind": "get",
     "name": "address",
     "memberof": "src/server.js~Server",
@@ -489,7 +416,7 @@
     "longname": "src/server.js~Server#address",
     "access": null,
     "description": "The address that the server is listening on.",
-    "lineNumber": 87,
+    "lineNumber": 64,
     "type": {
       "nullable": null,
       "types": [
@@ -500,7 +427,7 @@
     }
   },
   {
-    "__docId__": 24,
+    "__docId__": 20,
     "kind": "get",
     "name": "listening",
     "memberof": "src/server.js~Server",
@@ -510,7 +437,7 @@
     "longname": "src/server.js~Server#listening",
     "access": null,
     "description": "Value indicating whether the server is currently listening.",
-    "lineNumber": 96,
+    "lineNumber": 73,
     "type": {
       "nullable": null,
       "types": [
@@ -521,91 +448,7 @@
     }
   },
   {
-    "__docId__": 25,
-    "kind": "get",
-    "name": "onClose",
-    "memberof": "src/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "src/server.js~Server#onClose",
-    "access": null,
-    "description": "The stream of \"close\" events.",
-    "lineNumber": 104,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 26,
-    "kind": "get",
-    "name": "onError",
-    "memberof": "src/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "src/server.js~Server#onError",
-    "access": null,
-    "description": "The stream of \"error\" events.",
-    "lineNumber": 112,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable<Error>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 27,
-    "kind": "get",
-    "name": "onListen",
-    "memberof": "src/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "src/server.js~Server#onListen",
-    "access": null,
-    "description": "The stream of \"listen\" events.",
-    "lineNumber": 120,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 28,
-    "kind": "get",
-    "name": "onRequest",
-    "memberof": "src/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "src/server.js~Server#onRequest",
-    "access": null,
-    "description": "The stream of \"request\" events.",
-    "lineNumber": 128,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable<http.IncomingMessage>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 29,
+    "__docId__": 21,
     "kind": "get",
     "name": "port",
     "memberof": "src/server.js~Server",
@@ -615,7 +458,7 @@
     "longname": "src/server.js~Server#port",
     "access": null,
     "description": "The port that the server is listening on.",
-    "lineNumber": 136,
+    "lineNumber": 81,
     "type": {
       "nullable": null,
       "types": [
@@ -626,7 +469,7 @@
     }
   },
   {
-    "__docId__": 30,
+    "__docId__": 22,
     "kind": "method",
     "name": "close",
     "memberof": "src/server.js~Server",
@@ -636,7 +479,7 @@
     "longname": "src/server.js~Server#close",
     "access": null,
     "description": "Stops the server from accepting new connections. It does nothing if the server is already closed.",
-    "lineNumber": 146,
+    "lineNumber": 91,
     "params": [],
     "return": {
       "nullable": null,
@@ -656,7 +499,7 @@
     ]
   },
   {
-    "__docId__": 31,
+    "__docId__": 23,
     "kind": "member",
     "name": "_httpService",
     "memberof": "src/server.js~Server",
@@ -664,7 +507,7 @@
     "longname": "src/server.js~Server#_httpService",
     "access": null,
     "description": null,
-    "lineNumber": 148,
+    "lineNumber": 93,
     "undocument": true,
     "unknown": [
       {
@@ -679,7 +522,7 @@
     }
   },
   {
-    "__docId__": 32,
+    "__docId__": 24,
     "kind": "method",
     "name": "listen",
     "memberof": "src/server.js~Server",
@@ -689,7 +532,7 @@
     "longname": "src/server.js~Server#listen",
     "access": null,
     "description": "Begin accepting connections. It does nothing if the server is already started.",
-    "lineNumber": 163,
+    "lineNumber": 108,
     "params": [
       {
         "nullable": null,
@@ -725,12 +568,12 @@
         "types": [
           "*"
         ],
-        "description": "The \"listen\" event."
+        "description": "The \"listening\" event."
       }
     ]
   },
   {
-    "__docId__": 33,
+    "__docId__": 25,
     "kind": "member",
     "name": "_httpService",
     "memberof": "src/server.js~Server",
@@ -738,7 +581,7 @@
     "longname": "src/server.js~Server#_httpService",
     "access": null,
     "description": null,
-    "lineNumber": 165,
+    "lineNumber": 110,
     "undocument": true,
     "unknown": [
       {
@@ -753,7 +596,7 @@
     }
   },
   {
-    "__docId__": 34,
+    "__docId__": 26,
     "kind": "method",
     "name": "_getHostName",
     "memberof": "src/server.js~Server",
@@ -763,7 +606,7 @@
     "longname": "src/server.js~Server#_getHostName",
     "access": null,
     "description": "Gets the host name contained in the headers of the specified request.",
-    "lineNumber": 186,
+    "lineNumber": 131,
     "params": [
       {
         "nullable": null,
@@ -786,7 +629,7 @@
     }
   },
   {
-    "__docId__": 35,
+    "__docId__": 27,
     "kind": "method",
     "name": "_normalizeRoute",
     "memberof": "src/server.js~Server",
@@ -796,7 +639,7 @@
     "longname": "src/server.js~Server#_normalizeRoute",
     "access": null,
     "description": "Normalizes the specified route.",
-    "lineNumber": 200,
+    "lineNumber": 145,
     "params": [
       {
         "nullable": null,
@@ -827,7 +670,7 @@
     ]
   },
   {
-    "__docId__": 36,
+    "__docId__": 28,
     "kind": "method",
     "name": "_onHTTPRequest",
     "memberof": "src/server.js~Server",
@@ -837,7 +680,7 @@
     "longname": "src/server.js~Server#_onHTTPRequest",
     "access": null,
     "description": "Handles an HTTP request to a target.",
-    "lineNumber": 232,
+    "lineNumber": 177,
     "params": [
       {
         "nullable": null,
@@ -870,7 +713,7 @@
     ]
   },
   {
-    "__docId__": 37,
+    "__docId__": 29,
     "kind": "method",
     "name": "_onRequestError",
     "memberof": "src/server.js~Server",
@@ -880,7 +723,7 @@
     "longname": "src/server.js~Server#_onRequestError",
     "access": null,
     "description": "Handles the error emitted if a request to a target fails.",
-    "lineNumber": 252,
+    "lineNumber": 197,
     "params": [
       {
         "nullable": null,
@@ -923,7 +766,7 @@
     ]
   },
   {
-    "__docId__": 38,
+    "__docId__": 30,
     "kind": "method",
     "name": "_onWSRequest",
     "memberof": "src/server.js~Server",
@@ -933,7 +776,7 @@
     "longname": "src/server.js~Server#_onWSRequest",
     "access": null,
     "description": "Handles a WebSocket request to a target.",
-    "lineNumber": 263,
+    "lineNumber": 208,
     "params": [
       {
         "nullable": null,
@@ -968,7 +811,7 @@
     ]
   },
   {
-    "__docId__": 39,
+    "__docId__": 31,
     "kind": "method",
     "name": "_sendStatus",
     "memberof": "src/server.js~Server",
@@ -978,7 +821,7 @@
     "longname": "src/server.js~Server#_sendStatus",
     "access": null,
     "description": "Sends an HTTP status code and terminates the specified server response.",
-    "lineNumber": 278,
+    "lineNumber": 223,
     "params": [
       {
         "nullable": null,
@@ -1003,7 +846,7 @@
     ]
   },
   {
-    "__docId__": 41,
+    "__docId__": 33,
     "kind": "external",
     "name": "Infinity",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Infinity",
@@ -1015,7 +858,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 42,
+    "__docId__": 34,
     "kind": "external",
     "name": "NaN",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN",
@@ -1027,7 +870,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 43,
+    "__docId__": 35,
     "kind": "external",
     "name": "undefined",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined",
@@ -1039,7 +882,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 44,
+    "__docId__": 36,
     "kind": "external",
     "name": "null",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/null",
@@ -1051,7 +894,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 45,
+    "__docId__": 37,
     "kind": "external",
     "name": "Object",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
@@ -1063,7 +906,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 46,
+    "__docId__": 38,
     "kind": "external",
     "name": "object",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object",
@@ -1075,7 +918,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 47,
+    "__docId__": 39,
     "kind": "external",
     "name": "Function",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
@@ -1087,7 +930,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 48,
+    "__docId__": 40,
     "kind": "external",
     "name": "function",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function",
@@ -1099,7 +942,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 49,
+    "__docId__": 41,
     "kind": "external",
     "name": "Boolean",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
@@ -1111,7 +954,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 50,
+    "__docId__": 42,
     "kind": "external",
     "name": "boolean",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean",
@@ -1123,7 +966,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 51,
+    "__docId__": 43,
     "kind": "external",
     "name": "Symbol",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol",
@@ -1135,7 +978,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 52,
+    "__docId__": 44,
     "kind": "external",
     "name": "Error",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error",
@@ -1147,7 +990,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 53,
+    "__docId__": 45,
     "kind": "external",
     "name": "EvalError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/EvalError",
@@ -1159,7 +1002,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 54,
+    "__docId__": 46,
     "kind": "external",
     "name": "InternalError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/InternalError",
@@ -1171,7 +1014,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 55,
+    "__docId__": 47,
     "kind": "external",
     "name": "RangeError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RangeError",
@@ -1183,7 +1026,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 56,
+    "__docId__": 48,
     "kind": "external",
     "name": "ReferenceError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ReferenceError",
@@ -1195,7 +1038,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 57,
+    "__docId__": 49,
     "kind": "external",
     "name": "SyntaxError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SyntaxError",
@@ -1207,7 +1050,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 58,
+    "__docId__": 50,
     "kind": "external",
     "name": "TypeError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError",
@@ -1219,7 +1062,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 59,
+    "__docId__": 51,
     "kind": "external",
     "name": "URIError",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIError",
@@ -1231,7 +1074,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 60,
+    "__docId__": 52,
     "kind": "external",
     "name": "Number",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
@@ -1243,7 +1086,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 61,
+    "__docId__": 53,
     "kind": "external",
     "name": "number",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number",
@@ -1255,7 +1098,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 62,
+    "__docId__": 54,
     "kind": "external",
     "name": "Date",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date",
@@ -1267,7 +1110,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 63,
+    "__docId__": 55,
     "kind": "external",
     "name": "String",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
@@ -1279,7 +1122,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 64,
+    "__docId__": 56,
     "kind": "external",
     "name": "string",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String",
@@ -1291,7 +1134,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 65,
+    "__docId__": 57,
     "kind": "external",
     "name": "RegExp",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp",
@@ -1303,7 +1146,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 66,
+    "__docId__": 58,
     "kind": "external",
     "name": "Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
@@ -1315,7 +1158,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 67,
+    "__docId__": 59,
     "kind": "external",
     "name": "Int8Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array",
@@ -1327,7 +1170,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 68,
+    "__docId__": 60,
     "kind": "external",
     "name": "Uint8Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array",
@@ -1339,7 +1182,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 69,
+    "__docId__": 61,
     "kind": "external",
     "name": "Uint8ClampedArray",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8ClampedArray",
@@ -1351,7 +1194,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 70,
+    "__docId__": 62,
     "kind": "external",
     "name": "Int16Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array",
@@ -1363,7 +1206,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 71,
+    "__docId__": 63,
     "kind": "external",
     "name": "Uint16Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint16Array",
@@ -1375,7 +1218,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 72,
+    "__docId__": 64,
     "kind": "external",
     "name": "Int32Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array",
@@ -1387,7 +1230,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 73,
+    "__docId__": 65,
     "kind": "external",
     "name": "Uint32Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint32Array",
@@ -1399,7 +1242,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 74,
+    "__docId__": 66,
     "kind": "external",
     "name": "Float32Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float32Array",
@@ -1411,7 +1254,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 75,
+    "__docId__": 67,
     "kind": "external",
     "name": "Float64Array",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Float64Array",
@@ -1423,7 +1266,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 76,
+    "__docId__": 68,
     "kind": "external",
     "name": "Map",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map",
@@ -1435,7 +1278,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 77,
+    "__docId__": 69,
     "kind": "external",
     "name": "Set",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set",
@@ -1447,7 +1290,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 78,
+    "__docId__": 70,
     "kind": "external",
     "name": "WeakMap",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap",
@@ -1459,7 +1302,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 79,
+    "__docId__": 71,
     "kind": "external",
     "name": "WeakSet",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet",
@@ -1471,7 +1314,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 80,
+    "__docId__": 72,
     "kind": "external",
     "name": "ArrayBuffer",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer",
@@ -1483,7 +1326,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 81,
+    "__docId__": 73,
     "kind": "external",
     "name": "DataView",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView",
@@ -1495,7 +1338,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 82,
+    "__docId__": 74,
     "kind": "external",
     "name": "JSON",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON",
@@ -1507,7 +1350,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 83,
+    "__docId__": 75,
     "kind": "external",
     "name": "Promise",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise",
@@ -1519,7 +1362,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 84,
+    "__docId__": 76,
     "kind": "external",
     "name": "Generator",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator",
@@ -1531,7 +1374,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 85,
+    "__docId__": 77,
     "kind": "external",
     "name": "GeneratorFunction",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/GeneratorFunction",
@@ -1543,7 +1386,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 86,
+    "__docId__": 78,
     "kind": "external",
     "name": "Reflect",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect",
@@ -1555,7 +1398,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 87,
+    "__docId__": 79,
     "kind": "external",
     "name": "Proxy",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy",
@@ -1568,7 +1411,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 89,
+    "__docId__": 81,
     "kind": "external",
     "name": "CanvasRenderingContext2D",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D",
@@ -1580,7 +1423,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 90,
+    "__docId__": 82,
     "kind": "external",
     "name": "DocumentFragment",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment",
@@ -1592,7 +1435,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 91,
+    "__docId__": 83,
     "kind": "external",
     "name": "Element",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Element",
@@ -1604,7 +1447,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 92,
+    "__docId__": 84,
     "kind": "external",
     "name": "Event",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Event",
@@ -1616,7 +1459,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 93,
+    "__docId__": 85,
     "kind": "external",
     "name": "Node",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/Node",
@@ -1628,7 +1471,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 94,
+    "__docId__": 86,
     "kind": "external",
     "name": "NodeList",
     "externalLink": "https://developer.mozilla.org/en-US/docs/Web/API/NodeList",
@@ -1640,7 +1483,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 95,
+    "__docId__": 87,
     "kind": "external",
     "name": "XMLHttpRequest",
     "externalLink": "https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest",
@@ -1652,7 +1495,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 96,
+    "__docId__": 88,
     "kind": "external",
     "name": "AudioContext",
     "externalLink": "https://developer.mozilla.org/en/docs/Web/API/AudioContext",
@@ -1665,7 +1508,7 @@
     "builtinExternal": true
   },
   {
-    "__docId__": 97,
+    "__docId__": 89,
     "kind": "testFile",
     "name": "test/application_test.js",
     "content": "'use strict';\n\nimport {expect} from 'chai';\nimport {Application} from '../src/index';\n\n/**\n * @test {Application}\n */\ndescribe('Application', () => {\n\n  /**\n   * @test {Application#debug}\n   */\n  describe('#debug', () => {\n    it('should be `false` in production environment', () => {\n      process.env.NODE_ENV = 'production';\n      expect(new Application().debug).to.be.false;\n    });\n\n    it('should be `true` in development environment', () => {\n      process.env.NODE_ENV = 'development';\n      expect(new Application().debug).to.be.true;\n    });\n  });\n\n  /**\n   * @test {Application#env}\n   */\n  describe('#env', () => {\n    it('should be \"production\" if the NODE_ENV environment variable is not set', () => {\n      delete process.env.NODE_ENV;\n      expect(new Application().env).to.equal('production');\n    });\n\n    it('should equal the value of `NODE_ENV` environment variable when it is set', () => {\n      process.env.NODE_ENV = 'development';\n      expect(new Application().env).to.equal('development');\n    });\n  });\n\n  /**\n   * @test {Application#loadConfig}\n   */\n  describe('#loadConfig()', () => {\n    it('should return an array of objects corresponding to the ones specified on the command line arguments', async () => {\n      let config = await new Application().loadConfig({port: 80, target: 3000});\n      expect(config).to.be.an('array').and.have.lengthOf(1);\n      expect(config[0].port).to.equal(80);\n      expect(config[0].target).to.equal(3000);\n    });\n\n    it('should return an array of objects corresponding to the ones specified in the JSON configuration', async () => {\n      let config = await new Application().loadConfig({config: `${__dirname}/../example/json/basic_standalone.json`});\n      expect(config).to.be.an('array').and.have.lengthOf(1);\n      expect(config[0].port).to.equal(80);\n      expect(config[0].target).to.equal(3000);\n    });\n\n    it('should return an array of objects corresponding to the ones specified in the YAML configuration', async () => {\n      let config = await new Application().loadConfig({config: `${__dirname}/../example/yaml/basic_standalone.yaml`});\n      expect(config).to.be.an('array').and.have.lengthOf(1);\n      expect(config[0].port).to.equal(80);\n      expect(config[0].target).to.equal(3000);\n    });\n  });\n\n  /**\n   * @test {Application#_parseConfig}\n   */\n  describe('#_parseConfig()', () => {\n    it('should throw an error if the parsed JSON configuration has no `routes` and no `target` properties', async () => {\n      try {\n        await new Application()._parseConfig('{\"port\": 80}');\n        expect(true).to.not.be.ok;\n      }\n\n      catch (err) {\n        expect(true).to.be.ok;\n      }\n    });\n\n    it('should completes with an array if the parsed JSON configuration is valid', async () => {\n      let config = await new Application()._parseConfig('{\"port\": 80, \"target\": 3000}');\n      expect(config).to.be.an('array').and.have.lengthOf(1);\n      expect(config[0]).to.be.an('object');\n      expect(config[0].port).to.equal(80);\n      expect(config[0].target).to.equal(3000);\n    });\n\n    it('should throw an error if the parsed YAML configuration has no `routes` and no `target` properties', async () => {\n      try {\n        await new Application()._parseConfig('port: 80');\n        expect(true).to.not.be.ok;\n      }\n\n      catch (err) {\n        expect(true).to.be.ok;\n      }\n    });\n\n    it('should completes with an array if the parsed YAML configuration is valid', async () => {\n      let config = await new Application()._parseConfig('port: 80\\ntarget: 3000');\n      expect(config).to.be.an('array').and.have.lengthOf(1);\n      expect(config[0]).to.be.an('object');\n      expect(config[0].port).to.equal(80);\n      expect(config[0].target).to.equal(3000);\n    });\n  });\n});\n",
@@ -1676,7 +1519,7 @@
     "lineNumber": 1
   },
   {
-    "__docId__": 98,
+    "__docId__": 90,
     "kind": "testDescribe",
     "name": "describe0",
     "testId": 0,
@@ -1698,7 +1541,7 @@
     ]
   },
   {
-    "__docId__": 99,
+    "__docId__": 91,
     "kind": "testDescribe",
     "name": "describe1",
     "testId": 1,
@@ -1720,7 +1563,7 @@
     ]
   },
   {
-    "__docId__": 100,
+    "__docId__": 92,
     "kind": "testIt",
     "name": "it2",
     "testId": 2,
@@ -1733,7 +1576,7 @@
     "lineNumber": 15
   },
   {
-    "__docId__": 101,
+    "__docId__": 93,
     "kind": "testIt",
     "name": "it3",
     "testId": 3,
@@ -1746,7 +1589,7 @@
     "lineNumber": 20
   },
   {
-    "__docId__": 102,
+    "__docId__": 94,
     "kind": "testDescribe",
     "name": "describe4",
     "testId": 4,
@@ -1768,7 +1611,7 @@
     ]
   },
   {
-    "__docId__": 103,
+    "__docId__": 95,
     "kind": "testIt",
     "name": "it5",
     "testId": 5,
@@ -1781,7 +1624,7 @@
     "lineNumber": 30
   },
   {
-    "__docId__": 104,
+    "__docId__": 96,
     "kind": "testIt",
     "name": "it6",
     "testId": 6,
@@ -1794,7 +1637,7 @@
     "lineNumber": 35
   },
   {
-    "__docId__": 105,
+    "__docId__": 97,
     "kind": "testDescribe",
     "name": "describe7",
     "testId": 7,
@@ -1816,7 +1659,7 @@
     ]
   },
   {
-    "__docId__": 106,
+    "__docId__": 98,
     "kind": "testIt",
     "name": "it8",
     "testId": 8,
@@ -1829,7 +1672,7 @@
     "lineNumber": 45
   },
   {
-    "__docId__": 107,
+    "__docId__": 99,
     "kind": "testIt",
     "name": "it9",
     "testId": 9,
@@ -1842,7 +1685,7 @@
     "lineNumber": 52
   },
   {
-    "__docId__": 108,
+    "__docId__": 100,
     "kind": "testIt",
     "name": "it10",
     "testId": 10,
@@ -1855,7 +1698,7 @@
     "lineNumber": 59
   },
   {
-    "__docId__": 109,
+    "__docId__": 101,
     "kind": "testDescribe",
     "name": "describe11",
     "testId": 11,
@@ -1877,7 +1720,7 @@
     ]
   },
   {
-    "__docId__": 110,
+    "__docId__": 102,
     "kind": "testIt",
     "name": "it12",
     "testId": 12,
@@ -1890,7 +1733,7 @@
     "lineNumber": 71
   },
   {
-    "__docId__": 111,
+    "__docId__": 103,
     "kind": "testIt",
     "name": "it13",
     "testId": 13,
@@ -1903,7 +1746,7 @@
     "lineNumber": 82
   },
   {
-    "__docId__": 112,
+    "__docId__": 104,
     "kind": "testIt",
     "name": "it14",
     "testId": 14,
@@ -1916,7 +1759,7 @@
     "lineNumber": 90
   },
   {
-    "__docId__": 113,
+    "__docId__": 105,
     "kind": "testIt",
     "name": "it15",
     "testId": 15,
@@ -1929,10 +1772,10 @@
     "lineNumber": 101
   },
   {
-    "__docId__": 114,
+    "__docId__": 106,
     "kind": "testFile",
     "name": "test/server_test.js",
-    "content": "'use strict';\n\nimport {expect} from 'chai';\nimport {Observable, Subject} from 'rxjs';\nimport {Server} from '../src/index';\n\n/**\n * @test {Server}\n */\ndescribe('Server', () => {\n\n  /**\n   * @test {Server#address}\n   */\n  describe('#address', () => {\n    it('should have an \"any IPv4\" address as the default address', () => {\n      expect(new Server().address).to.equal(Server.DEFAULT_ADDRESS);\n    });\n\n    it('should have the same host as the specified one', () => {\n      expect(new Server({address: 'localhost'}).address).to.equal('localhost');\n    });\n  });\n\n  /**\n   * @test {Server#listening}\n   */\n  describe('#listening', () => {\n    it('should return whether the server is listening', async () => {\n      let server = new Server({address: '127.0.0.1', port: 0});\n      expect(server.listening).to.be.false;\n      await server.listen();\n      expect(server.listening).to.be.true;\n      await server.close();\n      expect(server.listening).to.be.false;\n    });\n  });\n\n  /**\n   * @test {Server#onClose}\n   */\n  describe('#onClose', () => {\n    it('should return an Observable instead of the underlying Subject', () => {\n      let stream = new Server().onClose;\n      expect(stream).to.be.instanceof(Observable);\n      expect(stream).to.not.be.instanceof(Subject);\n    });\n  });\n\n  /**\n   * @test {Server#onError}\n   */\n  describe('#onError', () => {\n    it('should return an Observable instead of the underlying Subject', () => {\n      let stream = new Server().onError;\n      expect(stream).to.be.instanceof(Observable);\n      expect(stream).to.not.be.instanceof(Subject);\n    });\n  });\n\n  /**\n   * @test {Server#onListen}\n   */\n  describe('#onListen', () => {\n    it('should return an Observable instead of the underlying Subject', () => {\n      let stream = new Server().onListen;\n      expect(stream).to.be.instanceof(Observable);\n      expect(stream).to.not.be.instanceof(Subject);\n    });\n  });\n\n  /**\n   * @test {Server#onRequest}\n   */\n  describe('#onRequest', () => {\n    it('should return an Observable instead of the underlying Subject', () => {\n      let stream = new Server().onRequest;\n      expect(stream).to.be.instanceof(Observable);\n      expect(stream).to.not.be.instanceof(Subject);\n    });\n  });\n\n  /**\n   * @test {Server#port}\n   */\n  describe('#port', () => {\n    it('should have 3000 as the default port', () => {\n      expect(new Server().port).to.equal(Server.DEFAULT_PORT);\n    });\n\n    it('should have the same port as the specified one', () => {\n      expect(new Server({port: 8080}).port).to.equal(8080);\n    });\n  });\n\n  /**\n   * @test {Server#_getHostName}\n   */\n  describe('#_getHostName()', () => {\n    it('it should return \"*\" if there is no \"Host\" header in the request', () => {\n      expect(new Server()._getHostName({headers: {}})).to.equal('*');\n    });\n\n    it('it should return the \"Host\" header found in the request, without the port number', () => {\n      expect(new Server()._getHostName({headers: {host: 'belin.io:8080'}})).to.equal('belin.io');\n    });\n  });\n\n  /**\n   * @test {Server#_normalizeRoute}\n   */\n  describe('#_normalizeRoute()', () => {\n    it('it should normalize a port on the local host', () => {\n      expect(new Server()._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\n      expect(new Server()._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\n    });\n\n    it('it should normalize an authority', () => {\n      expect(new Server()._normalizeRoute('domain.com:8080')).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\n      expect(new Server()._normalizeRoute({uri: 'domain.com:8080'})).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\n    });\n\n    it('it should normalize an origin', () => {\n      expect(new Server()._normalizeRoute('https://domain.com:8080')).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\n      expect(new Server()._normalizeRoute({uri: 'https://domain.com:8080'})).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\n    });\n\n    it('it should throw an error if the route has an invalid format', () => {\n      expect(() => new Server()._normalizeRoute([])).to.throw();\n    });\n  });\n});\n",
+    "content": "'use strict';\n\nimport {expect} from 'chai';\nimport {Server} from '../src/index';\n\n/**\n * @test {Server}\n */\ndescribe('Server', () => {\n\n  /**\n   * @test {Server#address}\n   */\n  describe('#address', () => {\n    it('should have an \"any IPv4\" address as the default address', () => {\n      expect(new Server().address).to.equal(Server.DEFAULT_ADDRESS);\n    });\n\n    it('should have the same host as the specified one', () => {\n      expect(new Server({address: 'localhost'}).address).to.equal('localhost');\n    });\n  });\n\n  /**\n   * @test {Server#listening}\n   */\n  describe('#listening', () => {\n    it('should return whether the server is listening', async () => {\n      let server = new Server({address: '127.0.0.1', port: 0});\n      expect(server.listening).to.be.false;\n      await server.listen();\n      expect(server.listening).to.be.true;\n      await server.close();\n      expect(server.listening).to.be.false;\n    });\n  });\n\n  /**\n   * @test {Server#port}\n   */\n  describe('#port', () => {\n    it('should have 3000 as the default port', () => {\n      expect(new Server().port).to.equal(Server.DEFAULT_PORT);\n    });\n\n    it('should have the same port as the specified one', () => {\n      expect(new Server({port: 8080}).port).to.equal(8080);\n    });\n  });\n\n  /**\n   * @test {Server#_getHostName}\n   */\n  describe('#_getHostName()', () => {\n    it('it should return \"*\" if there is no \"Host\" header in the request', () => {\n      expect(new Server()._getHostName({headers: {}})).to.equal('*');\n    });\n\n    it('it should return the \"Host\" header found in the request, without the port number', () => {\n      expect(new Server()._getHostName({headers: {host: 'belin.io:8080'}})).to.equal('belin.io');\n    });\n  });\n\n  /**\n   * @test {Server#_normalizeRoute}\n   */\n  describe('#_normalizeRoute()', () => {\n    it('it should normalize a port on the local host', () => {\n      expect(new Server()._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\n      expect(new Server()._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\n    });\n\n    it('it should normalize an authority', () => {\n      expect(new Server()._normalizeRoute('domain.com:8080')).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\n      expect(new Server()._normalizeRoute({uri: 'domain.com:8080'})).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\n    });\n\n    it('it should normalize an origin', () => {\n      expect(new Server()._normalizeRoute('https://domain.com:8080')).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\n      expect(new Server()._normalizeRoute({uri: 'https://domain.com:8080'})).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\n    });\n\n    it('it should throw an error if the route has an invalid format', () => {\n      expect(() => new Server()._normalizeRoute([])).to.throw();\n    });\n  });\n});\n",
     "static": true,
     "longname": "test/server_test.js",
     "access": null,
@@ -1940,7 +1783,7 @@
     "lineNumber": 1
   },
   {
-    "__docId__": 115,
+    "__docId__": 107,
     "kind": "testDescribe",
     "name": "describe16",
     "testId": 16,
@@ -1950,7 +1793,7 @@
     "longname": "test/server_test.js~describe16",
     "access": null,
     "description": "Server",
-    "lineNumber": 10,
+    "lineNumber": 9,
     "unknown": [
       {
         "tagName": "@test",
@@ -1962,7 +1805,7 @@
     ]
   },
   {
-    "__docId__": 116,
+    "__docId__": 108,
     "kind": "testDescribe",
     "name": "describe17",
     "testId": 17,
@@ -1972,7 +1815,7 @@
     "longname": "test/server_test.js~describe16.describe17",
     "access": null,
     "description": "#address",
-    "lineNumber": 15,
+    "lineNumber": 14,
     "unknown": [
       {
         "tagName": "@test",
@@ -1984,7 +1827,7 @@
     ]
   },
   {
-    "__docId__": 117,
+    "__docId__": 109,
     "kind": "testIt",
     "name": "it18",
     "testId": 18,
@@ -1994,10 +1837,10 @@
     "longname": "test/server_test.js~describe16.describe17.it18",
     "access": null,
     "description": "should have an \"any IPv4\" address as the default address",
-    "lineNumber": 16
+    "lineNumber": 15
   },
   {
-    "__docId__": 118,
+    "__docId__": 110,
     "kind": "testIt",
     "name": "it19",
     "testId": 19,
@@ -2007,10 +1850,10 @@
     "longname": "test/server_test.js~describe16.describe17.it19",
     "access": null,
     "description": "should have the same host as the specified one",
-    "lineNumber": 20
+    "lineNumber": 19
   },
   {
-    "__docId__": 119,
+    "__docId__": 111,
     "kind": "testDescribe",
     "name": "describe20",
     "testId": 20,
@@ -2020,7 +1863,7 @@
     "longname": "test/server_test.js~describe16.describe20",
     "access": null,
     "description": "#listening",
-    "lineNumber": 28,
+    "lineNumber": 27,
     "unknown": [
       {
         "tagName": "@test",
@@ -2032,7 +1875,7 @@
     ]
   },
   {
-    "__docId__": 120,
+    "__docId__": 112,
     "kind": "testIt",
     "name": "it21",
     "testId": 21,
@@ -2042,10 +1885,10 @@
     "longname": "test/server_test.js~describe16.describe20.it21",
     "access": null,
     "description": "should return whether the server is listening",
-    "lineNumber": 29
+    "lineNumber": 28
   },
   {
-    "__docId__": 121,
+    "__docId__": 113,
     "kind": "testDescribe",
     "name": "describe22",
     "testId": 22,
@@ -2054,148 +1897,8 @@
     "static": true,
     "longname": "test/server_test.js~describe16.describe22",
     "access": null,
-    "description": "#onClose",
-    "lineNumber": 42,
-    "unknown": [
-      {
-        "tagName": "@test",
-        "tagValue": "{Server#onClose}"
-      }
-    ],
-    "testTargets": [
-      "Server#onClose"
-    ]
-  },
-  {
-    "__docId__": 122,
-    "kind": "testIt",
-    "name": "it23",
-    "testId": 23,
-    "memberof": "test/server_test.js~describe16.describe22",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe22.it23",
-    "access": null,
-    "description": "should return an Observable instead of the underlying Subject",
-    "lineNumber": 43
-  },
-  {
-    "__docId__": 123,
-    "kind": "testDescribe",
-    "name": "describe24",
-    "testId": 24,
-    "memberof": "test/server_test.js~describe16",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe24",
-    "access": null,
-    "description": "#onError",
-    "lineNumber": 53,
-    "unknown": [
-      {
-        "tagName": "@test",
-        "tagValue": "{Server#onError}"
-      }
-    ],
-    "testTargets": [
-      "Server#onError"
-    ]
-  },
-  {
-    "__docId__": 124,
-    "kind": "testIt",
-    "name": "it25",
-    "testId": 25,
-    "memberof": "test/server_test.js~describe16.describe24",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe24.it25",
-    "access": null,
-    "description": "should return an Observable instead of the underlying Subject",
-    "lineNumber": 54
-  },
-  {
-    "__docId__": 125,
-    "kind": "testDescribe",
-    "name": "describe26",
-    "testId": 26,
-    "memberof": "test/server_test.js~describe16",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe26",
-    "access": null,
-    "description": "#onListen",
-    "lineNumber": 64,
-    "unknown": [
-      {
-        "tagName": "@test",
-        "tagValue": "{Server#onListen}"
-      }
-    ],
-    "testTargets": [
-      "Server#onListen"
-    ]
-  },
-  {
-    "__docId__": 126,
-    "kind": "testIt",
-    "name": "it27",
-    "testId": 27,
-    "memberof": "test/server_test.js~describe16.describe26",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe26.it27",
-    "access": null,
-    "description": "should return an Observable instead of the underlying Subject",
-    "lineNumber": 65
-  },
-  {
-    "__docId__": 127,
-    "kind": "testDescribe",
-    "name": "describe28",
-    "testId": 28,
-    "memberof": "test/server_test.js~describe16",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe28",
-    "access": null,
-    "description": "#onRequest",
-    "lineNumber": 75,
-    "unknown": [
-      {
-        "tagName": "@test",
-        "tagValue": "{Server#onRequest}"
-      }
-    ],
-    "testTargets": [
-      "Server#onRequest"
-    ]
-  },
-  {
-    "__docId__": 128,
-    "kind": "testIt",
-    "name": "it29",
-    "testId": 29,
-    "memberof": "test/server_test.js~describe16.describe28",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe28.it29",
-    "access": null,
-    "description": "should return an Observable instead of the underlying Subject",
-    "lineNumber": 76
-  },
-  {
-    "__docId__": 129,
-    "kind": "testDescribe",
-    "name": "describe30",
-    "testId": 30,
-    "memberof": "test/server_test.js~describe16",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe16.describe30",
-    "access": null,
     "description": "#port",
-    "lineNumber": 86,
+    "lineNumber": 41,
     "unknown": [
       {
         "tagName": "@test",
@@ -2207,43 +1910,43 @@
     ]
   },
   {
-    "__docId__": 130,
+    "__docId__": 114,
     "kind": "testIt",
-    "name": "it31",
-    "testId": 31,
-    "memberof": "test/server_test.js~describe16.describe30",
+    "name": "it23",
+    "testId": 23,
+    "memberof": "test/server_test.js~describe16.describe22",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe30.it31",
+    "longname": "test/server_test.js~describe16.describe22.it23",
     "access": null,
     "description": "should have 3000 as the default port",
-    "lineNumber": 87
+    "lineNumber": 42
   },
   {
-    "__docId__": 131,
+    "__docId__": 115,
     "kind": "testIt",
-    "name": "it32",
-    "testId": 32,
-    "memberof": "test/server_test.js~describe16.describe30",
+    "name": "it24",
+    "testId": 24,
+    "memberof": "test/server_test.js~describe16.describe22",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe30.it32",
+    "longname": "test/server_test.js~describe16.describe22.it24",
     "access": null,
     "description": "should have the same port as the specified one",
-    "lineNumber": 91
+    "lineNumber": 46
   },
   {
-    "__docId__": 132,
+    "__docId__": 116,
     "kind": "testDescribe",
-    "name": "describe33",
-    "testId": 33,
+    "name": "describe25",
+    "testId": 25,
     "memberof": "test/server_test.js~describe16",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe33",
+    "longname": "test/server_test.js~describe16.describe25",
     "access": null,
     "description": "#_getHostName()",
-    "lineNumber": 99,
+    "lineNumber": 54,
     "unknown": [
       {
         "tagName": "@test",
@@ -2255,43 +1958,43 @@
     ]
   },
   {
-    "__docId__": 133,
+    "__docId__": 117,
     "kind": "testIt",
-    "name": "it34",
-    "testId": 34,
-    "memberof": "test/server_test.js~describe16.describe33",
+    "name": "it26",
+    "testId": 26,
+    "memberof": "test/server_test.js~describe16.describe25",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe33.it34",
+    "longname": "test/server_test.js~describe16.describe25.it26",
     "access": null,
     "description": "it should return \"*\" if there is no \"Host\" header in the request",
-    "lineNumber": 100
+    "lineNumber": 55
   },
   {
-    "__docId__": 134,
+    "__docId__": 118,
     "kind": "testIt",
-    "name": "it35",
-    "testId": 35,
-    "memberof": "test/server_test.js~describe16.describe33",
+    "name": "it27",
+    "testId": 27,
+    "memberof": "test/server_test.js~describe16.describe25",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe33.it35",
+    "longname": "test/server_test.js~describe16.describe25.it27",
     "access": null,
     "description": "it should return the \"Host\" header found in the request, without the port number",
-    "lineNumber": 104
+    "lineNumber": 59
   },
   {
-    "__docId__": 135,
+    "__docId__": 119,
     "kind": "testDescribe",
-    "name": "describe36",
-    "testId": 36,
+    "name": "describe28",
+    "testId": 28,
     "memberof": "test/server_test.js~describe16",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe36",
+    "longname": "test/server_test.js~describe16.describe28",
     "access": null,
     "description": "#_normalizeRoute()",
-    "lineNumber": 112,
+    "lineNumber": 67,
     "unknown": [
       {
         "tagName": "@test",
@@ -2303,55 +2006,55 @@
     ]
   },
   {
-    "__docId__": 136,
+    "__docId__": 120,
     "kind": "testIt",
-    "name": "it37",
-    "testId": 37,
-    "memberof": "test/server_test.js~describe16.describe36",
+    "name": "it29",
+    "testId": 29,
+    "memberof": "test/server_test.js~describe16.describe28",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe36.it37",
+    "longname": "test/server_test.js~describe16.describe28.it29",
     "access": null,
     "description": "it should normalize a port on the local host",
-    "lineNumber": 113
+    "lineNumber": 68
   },
   {
-    "__docId__": 137,
+    "__docId__": 121,
     "kind": "testIt",
-    "name": "it38",
-    "testId": 38,
-    "memberof": "test/server_test.js~describe16.describe36",
+    "name": "it30",
+    "testId": 30,
+    "memberof": "test/server_test.js~describe16.describe28",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe36.it38",
+    "longname": "test/server_test.js~describe16.describe28.it30",
     "access": null,
     "description": "it should normalize an authority",
-    "lineNumber": 118
+    "lineNumber": 73
   },
   {
-    "__docId__": 138,
+    "__docId__": 122,
     "kind": "testIt",
-    "name": "it39",
-    "testId": 39,
-    "memberof": "test/server_test.js~describe16.describe36",
+    "name": "it31",
+    "testId": 31,
+    "memberof": "test/server_test.js~describe16.describe28",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe36.it39",
+    "longname": "test/server_test.js~describe16.describe28.it31",
     "access": null,
     "description": "it should normalize an origin",
-    "lineNumber": 123
+    "lineNumber": 78
   },
   {
-    "__docId__": 139,
+    "__docId__": 123,
     "kind": "testIt",
-    "name": "it40",
-    "testId": 40,
-    "memberof": "test/server_test.js~describe16.describe36",
+    "name": "it32",
+    "testId": 32,
+    "memberof": "test/server_test.js~describe16.describe28",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe16.describe36.it40",
+    "longname": "test/server_test.js~describe16.describe28.it32",
     "access": null,
     "description": "it should throw an error if the route has an invalid format",
-    "lineNumber": 128
+    "lineNumber": 83
   }
 ]

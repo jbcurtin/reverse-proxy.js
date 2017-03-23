@@ -111,9 +111,9 @@ Use an asterisk (<code>*</code>) as host name to define the route matched by def
 <h3 id="adding-http-headers-to-the-proxied-requests">Adding HTTP headers to the proxied requests</h3>
 <p>It can sometimes be useful to add some HTTP headers to the requests sent to the target servers.</p>
 <p>Let say that you have a remote service that needs basic authentication, but that you want to expose publicly. You could add an <code>Authorization</code> header to the proxied requests in order to let the remote service accept these requests.</p>
-<p>To add an header to all the proxied requests of a target, you must use the object notation for this target, and a <code>headers</code> subproperty providing a map of the HTTP headers to set.</p>
+<p>To add an header to all the proxied requests of a target, you must use the object notation for this target, and a <code>headers</code> property providing a map of the HTTP headers to set.</p>
 <blockquote>
-<p>The HTTP headers defined in this way will replace <strong>any</strong> existing header with the same name.</p>
+<p>The HTTP headers defined in this way will replace <strong>any</strong> existing headers with the same name.</p>
 </blockquote>
 <p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/http_headers.json"><code>http_headers.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/http_headers.yaml"><code>http_headers.yaml</code></a> file in the <code>example</code> folder.</p>
 <h2 id="configuration-schema">Configuration schema</h2>
