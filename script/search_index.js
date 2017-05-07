@@ -13,97 +13,97 @@ window.esdocSearchIndex = [
   ],
   [
     "application src/application.js~application,application",
-    "test-file/test/application_test.js.html#lineNumber9",
+    "test-file/test/application_test.js.html#lineNumber10",
     "Application",
     "test"
   ],
   [
     "application#_parseconfig application#_parseconfig,application#_parseconfig",
-    "test-file/test/application_test.js.html#lineNumber70",
+    "test-file/test/application_test.js.html#lineNumber71",
     "Application #_parseConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber82",
+    "test-file/test/application_test.js.html#lineNumber83",
     "Application #_parseConfig() should completes with an array if the parsed JSON configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber101",
+    "test-file/test/application_test.js.html#lineNumber102",
     "Application #_parseConfig() should completes with an array if the parsed YAML configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber71",
+    "test-file/test/application_test.js.html#lineNumber72",
     "Application #_parseConfig() should throw an error if the parsed JSON configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber90",
+    "test-file/test/application_test.js.html#lineNumber91",
     "Application #_parseConfig() should throw an error if the parsed YAML configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "application#debug src/application.js~application#debug,application#debug",
-    "test-file/test/application_test.js.html#lineNumber14",
+    "test-file/test/application_test.js.html#lineNumber15",
     "Application #debug",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber15",
+    "test-file/test/application_test.js.html#lineNumber16",
     "Application #debug should be `false` in production environment",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber20",
+    "test-file/test/application_test.js.html#lineNumber21",
     "Application #debug should be `true` in development environment",
     "test"
   ],
   [
     "application#env src/application.js~application#env,application#env",
-    "test-file/test/application_test.js.html#lineNumber29",
+    "test-file/test/application_test.js.html#lineNumber30",
     "Application #env",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber30",
-    "Application #env should be \"production\" if the NODE_ENV environment variable is not set",
+    "test-file/test/application_test.js.html#lineNumber31",
+    "Application #env should be \"development\" if the NODE_ENV environment variable is not set",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber35",
+    "test-file/test/application_test.js.html#lineNumber36",
     "Application #env should equal the value of `NODE_ENV` environment variable when it is set",
     "test"
   ],
   [
     "application#loadconfig src/application.js~application#loadconfig,application#loadconfig",
-    "test-file/test/application_test.js.html#lineNumber44",
+    "test-file/test/application_test.js.html#lineNumber45",
     "Application #loadConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber52",
+    "test-file/test/application_test.js.html#lineNumber53",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified in the JSON configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber59",
+    "test-file/test/application_test.js.html#lineNumber60",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified in the YAML configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber45",
+    "test-file/test/application_test.js.html#lineNumber46",
     "Application #loadConfig() should return an array of objects corresponding to the ones specified on the command line arguments",
     "test"
   ],
@@ -439,103 +439,103 @@ window.esdocSearchIndex = [
   ],
   [
     "server src/server.js~server,server",
-    "test-file/test/server_test.js.html#lineNumber9",
+    "test-file/test/server_test.js.html#lineNumber10",
     "Server",
     "test"
   ],
   [
     "server#_gethostname server#_gethostname,server#_gethostname",
-    "test-file/test/server_test.js.html#lineNumber54",
-    "Server #_getHostName()",
-    "test"
-  ],
-  [
-    "",
     "test-file/test/server_test.js.html#lineNumber55",
-    "Server #_getHostName() it should return \"*\" if there is no \"Host\" header in the request",
+    "Server #_getHostname()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber59",
-    "Server #_getHostName() it should return the \"Host\" header found in the request, without the port number",
+    "test-file/test/server_test.js.html#lineNumber56",
+    "Server #_getHostname() it should return \"*\" if there is no \"Host\" header in the request",
+    "test"
+  ],
+  [
+    "",
+    "test-file/test/server_test.js.html#lineNumber60",
+    "Server #_getHostname() it should return the \"Host\" header found in the request, without the port number",
     "test"
   ],
   [
     "server#_normalizeroute server#_normalizeroute,server#_normalizeroute",
-    "test-file/test/server_test.js.html#lineNumber67",
+    "test-file/test/server_test.js.html#lineNumber68",
     "Server #_normalizeRoute()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber68",
+    "test-file/test/server_test.js.html#lineNumber69",
     "Server #_normalizeRoute() it should normalize a port on the local host",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber73",
+    "test-file/test/server_test.js.html#lineNumber74",
     "Server #_normalizeRoute() it should normalize an authority",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber78",
+    "test-file/test/server_test.js.html#lineNumber79",
     "Server #_normalizeRoute() it should normalize an origin",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber83",
+    "test-file/test/server_test.js.html#lineNumber84",
     "Server #_normalizeRoute() it should throw an error if the route has an invalid format",
     "test"
   ],
   [
     "server#address src/server.js~server#address,server#address",
-    "test-file/test/server_test.js.html#lineNumber14",
+    "test-file/test/server_test.js.html#lineNumber15",
     "Server #address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber15",
+    "test-file/test/server_test.js.html#lineNumber16",
     "Server #address should have an \"any IPv4\" address as the default address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber19",
+    "test-file/test/server_test.js.html#lineNumber20",
     "Server #address should have the same host as the specified one",
     "test"
   ],
   [
     "server#listening src/server.js~server#listening,server#listening",
-    "test-file/test/server_test.js.html#lineNumber27",
+    "test-file/test/server_test.js.html#lineNumber28",
     "Server #listening",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber28",
+    "test-file/test/server_test.js.html#lineNumber29",
     "Server #listening should return whether the server is listening",
     "test"
   ],
   [
     "server#port src/server.js~server#port,server#port",
-    "test-file/test/server_test.js.html#lineNumber41",
+    "test-file/test/server_test.js.html#lineNumber42",
     "Server #port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber42",
+    "test-file/test/server_test.js.html#lineNumber43",
     "Server #port should have 3000 as the default port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber46",
+    "test-file/test/server_test.js.html#lineNumber47",
     "Server #port should have the same port as the specified one",
     "test"
   ],
@@ -564,12 +564,6 @@ window.esdocSearchIndex = [
     "method"
   ],
   [
-    "src/application.js~application#log",
-    "class/src/application.js~Application.html#instance-method-log",
-    "src/application.js~Application#log",
-    "method"
-  ],
-  [
     "src/application.js~application#run",
     "class/src/application.js~Application.html#instance-method-run",
     "src/application.js~Application#run",
@@ -586,6 +580,12 @@ window.esdocSearchIndex = [
     "class/src/application.js~Application.html#instance-method-startServers",
     "src/application.js~Application#startServers",
     "method"
+  ],
+  [
+    "src/application.js~application.log_format",
+    "class/src/application.js~Application.html#static-get-LOG_FORMAT",
+    "src/application.js~Application.LOG_FORMAT",
+    "member"
   ],
   [
     "src/index.js",
@@ -633,6 +633,12 @@ window.esdocSearchIndex = [
     "src/server.js~server#port",
     "class/src/server.js~Server.html#instance-get-port",
     "src/server.js~Server#port",
+    "member"
+  ],
+  [
+    "src/server.js~server#routes",
+    "class/src/server.js~Server.html#instance-member-routes",
+    "src/server.js~Server#routes",
     "member"
   ],
   [

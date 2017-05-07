@@ -8,10 +8,10 @@
   "license": "Apache-2.0",
   "preferGlobal": true,
   "repository": "cedx/reverse-proxy.js",
-  "version": "3.0.0",
+  "version": "4.0.0",
 
-  "jsnext:main": "./src/index",
   "main": "./lib/index",
+  "module": "./src/index",
 
   "bin": {
     "reverse-proxy": "./bin/cli.js"
@@ -19,11 +19,12 @@
   "dependencies": {
     "commander": "^2.9.0",
     "http-proxy": "^1.16.2",
-    "js-yaml": "^3.8.2"
+    "js-yaml": "^3.8.3",
+    "morgan": "^1.8.1"
   },
   "devDependencies": {
-    "@cedx/coveralls": "^0.4.0",
-    "@cedx/gulp-david": "^6.1.0",
+    "@cedx/coveralls": "^0.8.0",
+    "@cedx/gulp-david": "^7.0.0",
     "babel-preset-env": "^1.2.2",
     "babel-register": "^6.24.0",
     "chai": "^3.5.0",
@@ -32,8 +33,9 @@
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "gulp-eslint": "^3.0.1",
-    "mocha": "^3.2.0",
-    "nyc": "^10.1.2"
+    "mocha": "^3.3.0",
+    "nsp": "^2.6.3",
+    "nyc": "^10.3.2"
   },
   "engines": {
     "node": ">=7.6.0"

@@ -39,7 +39,7 @@
 </nav>
 
 <div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="reverse-proxy-js">Reverse-Proxy.js</h1>
-<p><img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"> <img src="https://david-dm.org/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg" alt="Coverage"> <img src="https://travis-ci.org/cedx/reverse-proxy.js.svg" alt="Build"></p>
+<p><img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"> <img src="https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg" alt="Downloads"> <img src="https://david-dm.org/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg" alt="Coverage"> <img src="https://travis-ci.org/cedx/reverse-proxy.js.svg" alt="Build"></p>
 <p>Simple reverse proxy server supporting WebSockets, implemented in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a>.</p>
 <p>Let&apos;s suppose you were running multiple HTTP application servers, but you only wanted to expose one machine to the Internet. You could setup Reverse-Proxy.js on that one machine and then reverse-proxy the incoming HTTP requests to locally running services which were not exposed to the outside network.</p>
 <h2 id="features">Features</h2>
@@ -49,6 +49,7 @@
 <li>Multiple instances: allows to listen on several ports, with each one having its own target(s).</li>
 <li>Supports HTTPS protocol.</li>
 <li>Supports <a href="https://en.wikipedia.org/wiki/WebSocket">WebSockets</a> requests.</li>
+<li>Supports custom HTTP headers.</li>
 </ul>
 <h2 id="requirements">Requirements</h2>
 <p>The latest <a href="https://nodejs.org">Node.js</a> and <a href="https://www.npmjs.com">npm</a> versions.

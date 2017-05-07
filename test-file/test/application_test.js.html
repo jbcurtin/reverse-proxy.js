@@ -42,6 +42,7 @@
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
 import {expect} from &apos;chai&apos;;
+import {describe, it} from &apos;mocha&apos;;
 import {Application} from &apos;../src/index&apos;;
 
 /**
@@ -68,14 +69,14 @@ describe(&apos;Application&apos;, () =&gt; {
    * @test {Application#env}
    */
   describe(&apos;#env&apos;, () =&gt; {
-    it(&apos;should be &quot;production&quot; if the NODE_ENV environment variable is not set&apos;, () =&gt; {
+    it(&apos;should be &quot;development&quot; if the NODE_ENV environment variable is not set&apos;, () =&gt; {
       delete process.env.NODE_ENV;
-      expect(new Application().env).to.equal(&apos;production&apos;);
+      expect(new Application().env).to.equal(&apos;development&apos;);
     });
 
     it(&apos;should equal the value of `NODE_ENV` environment variable when it is set&apos;, () =&gt; {
-      process.env.NODE_ENV = &apos;development&apos;;
-      expect(new Application().env).to.equal(&apos;development&apos;);
+      process.env.NODE_ENV = &apos;production&apos;;
+      expect(new Application().env).to.equal(&apos;production&apos;);
     });
   });
 

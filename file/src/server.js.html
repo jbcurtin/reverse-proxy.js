@@ -40,9 +40,9 @@
 
 <div class="content" data-ice="content"><h1 data-ice="title">src/server.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import EventEmitter from &apos;events&apos;;
-import http from &apos;http&apos;;
-import https from &apos;https&apos;;
-import httpProxy from &apos;http-proxy&apos;;
+import {createServer, STATUS_CODES} from &apos;http&apos;;
+import {createServer as createSecureServer} from &apos;https&apos;;
+import {createProxyServer} from &apos;http-proxy&apos;;
 
 /**
  * Acts as an intermediary for requests from clients seeking resources from other servers.
@@ -73,6 +73,14 @@ export class Server extends EventEmitter {
     super();
 
     /**
+     * The routing table.
+     * @type {Map}
+     */
+    this.routes = new Map();
+    if (&apos;routes&apos; in options) for (let host in options.routes) this.routes.set(host, this._normalizeRoute(options.routes[host]));
+    if (&apos;target&apos; in options) this.routes.set(&apos;*&apos;, this._normalizeRoute(options.target));
+
+    /**
      * The underlying HTTP(S) service listening for requests.
      * @type {http.Server|https.Server}
      */
@@ -80,22 +88,20 @@ export class Server extends EventEmitter {
 
     /**
      * The server settings.
-     * @type {object}
+     * @type {Map}
      */
-    this._options = options;
-    if (!(&apos;routes&apos; in this._options)) this._options.routes = {};
-    if (&apos;target&apos; in this._options) this._options.routes[&apos;*&apos;] = this._options.target;
+    this._options = {
+      address: typeof options.address == &apos;string&apos; ? options.address : Server.DEFAULT_ADDRESS,
+      port: typeof options.port == &apos;number&apos; ? options.port : Server.DEFAULT_PORT,
+      proxy: typeof options.proxy == &apos;object&apos; &amp;&amp; options.proxy ? options.proxy : null,
+      ssl: typeof options.ssl == &apos;object&apos; &amp;&amp; options.ssl ? options.ssl : null
+    };
 
     /**
      * The underlying proxy service providing custom application logic.
      * @type {httpProxy.Server}
      */
-    this._proxyService = httpProxy.createProxyServer(this._options.proxy || {});
-    this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
-
-    // Normalize the routing table.
-    let routes = this._options.routes;
-    for (let host in routes) routes[host] = this._normalizeRoute(routes[host]);
+    this._proxyService = null;
   }
 
   /**
@@ -103,8 +109,7 @@ export class Server extends EventEmitter {
    * @type {string}
    */
   get address() {
-    if (this.listening) return this._httpService.address().address;
-    return typeof this._options.address == &apos;string&apos; ? this._options.address : Server.DEFAULT_ADDRESS;
+    return this.listening ? this._httpService.address().address : this._options.address;
   }
 
   /**
@@ -120,8 +125,7 @@ export class Server extends EventEmitter {
    * @type {number}
    */
   get port() {
-    if (this.listening) return this._httpService.address().port;
-    return typeof this._options.port == &apos;number&apos; ? this._options.port : Server.DEFAULT_PORT;
+    return this.listening ? this._httpService.address().port : this._options.port;
   }
 
   /**
@@ -130,13 +134,12 @@ export class Server extends EventEmitter {
    * @emits {*} The &quot;close&quot; event.
    */
   async close() {
-    if (this.listening) await new Promise(resolve =&gt; this._httpService.close(() =&gt; {
+    return !this.listening ? null : new Promise(resolve =&gt; this._httpService.close(() =&gt; {
       this._httpService = null;
+      this._proxyService = null;
       this.emit(&apos;close&apos;);
-      resolve();
+      resolve(null);
     }));
-
-    return null;
   }
 
   /**
@@ -147,21 +150,20 @@ export class Server extends EventEmitter {
    * @emits {*} The &quot;listening&quot; event.
    */
   async listen(port = -1, address = &apos;&apos;) {
-    if (!this.listening) {
-      this._httpService = &apos;ssl&apos; in this._options ?
-        https.createServer(this._options.ssl, this._onHTTPRequest.bind(this)) :
-        http.createServer(this._onHTTPRequest.bind(this));
+    if (this.listening) return this.port;
 
-      this._httpService.on(&apos;error&apos;, err =&gt; this._onError.next(err));
-      this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
+    let requestHandler = this._onHTTPRequest.bind(this);
+    this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);
+    this._httpService.on(&apos;error&apos;, error =&gt; this.emit(&apos;error&apos;, error));
+    this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
 
-      await new Promise(resolve =&gt; this._httpService.listen(port &gt;= 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
-        this.emit(&apos;listening&apos;);
-        resolve();
-      }));
-    }
+    this._proxyService = createProxyServer(this._options.proxy);
+    this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
 
-    return this.port;
+    return new Promise(resolve =&gt; this._httpService.listen(port &gt;= 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
+      this.emit(&apos;listening&apos;);
+      resolve(this.port);
+    }));
   }
 
   /**
@@ -169,7 +171,7 @@ export class Server extends EventEmitter {
    * @param {http.IncomingMessage} request The request sent by the client.
    * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.
    */
-  _getHostName(request) {
+  _getHostname(request) {
     let headers = request.headers;
     if (!(&apos;host&apos; in headers)) return &apos;*&apos;;
 
@@ -216,13 +218,13 @@ export class Server extends EventEmitter {
    * @emits {http.IncomingMessage} The &quot;request&quot; event.
    */
   _onHTTPRequest(request, response) {
-    this.emit(&apos;request&apos;, request);
+    this.emit(&apos;request&apos;, request, response);
 
-    let hostName = this._getHostName(request);
-    let host = hostName in this._options.routes ? hostName : &apos;*&apos;;
-    if (!(host in this._options.routes)) this._sendStatus(response, 404);
+    let hostname = this._getHostname(request);
+    let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
+    if (!this.routes.has(pattern)) this._sendStatus(response, 404);
     else {
-      let target = this._options.routes[host];
+      let target = this.routes.get(pattern);
       Object.assign(request.headers, target.headers);
       this._proxyService.web(request, response, {target: target.uri});
     }
@@ -247,10 +249,10 @@ export class Server extends EventEmitter {
    * @param {Buffer} head The first packet of the upgraded stream.
    */
   _onWSRequest(request, socket, head) {
-    let hostName = this._getHostName(request);
-    let host = hostName in this._options.routes ? hostName : &apos;*&apos;;
-    if (host in this._options.routes) {
-      let target = this._options.routes[host];
+    let hostname = this._getHostname(request);
+    let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
+    if (this.routes.has(pattern)) {
+      let target = this.routes.get(pattern);
       Object.assign(request.headers, target.headers);
       this._proxyService.ws(request, socket, head, {target: target.uri});
     }
@@ -262,10 +264,10 @@ export class Server extends EventEmitter {
    * @param {number} statusCode The HTTP status code to send.
    */
   _sendStatus(response, statusCode) {
-    let message = http.STATUS_CODES[statusCode];
+    let message = STATUS_CODES[statusCode];
     response.writeHead(statusCode, {
       &apos;Content-Length&apos;: Buffer.byteLength(message),
-      &apos;Content-Type&apos;: &apos;text/plain&apos;
+      &apos;Content-Type&apos;: &apos;text/plain; charset=utf-8&apos;
     });
 
     response.end(message);

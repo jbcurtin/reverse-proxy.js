@@ -42,6 +42,7 @@
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
 import {expect} from &apos;chai&apos;;
+import {describe, it} from &apos;mocha&apos;;
 import {Server} from &apos;../src/index&apos;;
 
 /**
@@ -90,15 +91,15 @@ describe(&apos;Server&apos;, () =&gt; {
   });
 
   /**
-   * @test {Server#_getHostName}
+   * @test {Server#_getHostname}
    */
-  describe(&apos;#_getHostName()&apos;, () =&gt; {
+  describe(&apos;#_getHostname()&apos;, () =&gt; {
     it(&apos;it should return &quot;*&quot; if there is no &quot;Host&quot; header in the request&apos;, () =&gt; {
-      expect(new Server()._getHostName({headers: {}})).to.equal(&apos;*&apos;);
+      expect(new Server()._getHostname({headers: {}})).to.equal(&apos;*&apos;);
     });
 
     it(&apos;it should return the &quot;Host&quot; header found in the request, without the port number&apos;, () =&gt; {
-      expect(new Server()._getHostName({headers: {host: &apos;belin.io:8080&apos;}})).to.equal(&apos;belin.io&apos;);
+      expect(new Server()._getHostname({headers: {host: &apos;belin.io:8080&apos;}})).to.equal(&apos;belin.io&apos;);
     });
   });
 

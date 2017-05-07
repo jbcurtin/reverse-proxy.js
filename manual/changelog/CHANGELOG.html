@@ -41,7 +41,9 @@
 <div data-ice="manual" data-toc-name="changelog">
     <ul class="manual-toc">
       
-    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html" data-ice="link">Changelog</a></li>
+    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#changelog" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-4-0-0" data-ice="link">Version 4.0.0</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-3-1-0" data-ice="link">Version 3.1.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-3-0-0" data-ice="link">Version 3.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-2-0" data-ice="link">Version 2.2.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-1-0" data-ice="link">Version 2.1.0</a></li>
@@ -75,6 +77,18 @@
   </div>
   <div data-ice="content"><h1 id="changelog">Changelog</h1>
 <p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p>
+<h1 id="version-4-0-0">Version 4.0.0</h1>
+<ul>
+<li>Breaking change: removed the <code>Application#log</code> method.</li>
+<li>The response object is also provided in <code>request</code> events.</li>
+<li>The routing table of a <code>Server</code> is now exposed as the <code>routes</code> property.</li>
+<li>Using the <a href="https://www.npmjs.com/package/morgan">Morgan</a> module to handle the logging.</li>
+</ul>
+<h2 id="version-3-1-0">Version 3.1.0</h2>
+<ul>
+<li>Added support for the <a href="https://nodesecurity.io">Node Security Platform</a> reports.</li>
+<li>Updated the package dependencies.</li>
+</ul>
 <h2 id="version-3-0-0">Version 3.0.0</h2>
 <ul>
 <li>Breaking change: dropped the dependency on <a href="http://reactivex.io/intro.html">Observables</a>.</li>
