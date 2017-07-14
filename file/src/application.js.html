@@ -43,11 +43,10 @@
 import {readFile} from &apos;fs&apos;;
 import {safeLoadAll as loadYAML} from &apos;js-yaml&apos;;
 import morgan from &apos;morgan&apos;;
-import {resolve} from &apos;path&apos;;
+import {Observable} from &apos;rxjs&apos;;
 
 import {version as pkgVersion} from &apos;../package.json&apos;;
 import {Server} from &apos;./server&apos;;
-
 
 /**
  * Represents an application providing functionalities specific to console requests.
@@ -60,6 +59,18 @@ export class Application {
    */
   static get LOG_FORMAT() {
     return &apos;:req[host] :remote-addr - :remote-user [:date[clf]] &quot;:method :url HTTP/:http-version&quot; :status :res[content-length] &quot;:referrer&quot; &quot;:user-agent&quot;&apos;;
+  }
+
+  /**
+   * Initializes a new instance of the class.
+   */
+  constructor() {
+
+    /**
+     * The proxy servers managed by this application.
+     * @type {Server[]}
+     */
+    this.servers = [];
   }
 
   /**
@@ -79,30 +90,34 @@ export class Application {
   }
 
   /**
-   * Loads the application configuration from the file system.
-   * @param {object} args The command line arguments.
-   * @return {Promise&lt;Array&gt;} An array of objects containing the settings of one or several reverse proxy instances.
+   * Initializes the application.
+   * @param {object} [args] The command line arguments.
+   * @return {Observable} Completes when the initialization is over.
    */
-  async loadConfig(args) {
-    if (!args.config) return [{
+  init(args = {}) {
+    let observable;
+    if (typeof args.config == &apos;string&apos;) {
+      const loadConfig = Observable.bindNodeCallback(readFile);
+      observable = loadConfig(args.config, &apos;utf8&apos;).mergeMap(data =&gt; this._parseConfig(data));
+    }
+    else observable = Observable.of([new Server({
       address: args.address,
       port: args.port,
       target: args.target
-    }];
+    })]);
 
-    const loadConfig = file =&gt; new Promise(resolve =&gt; readFile(file, &apos;utf8&apos;, (err, data) =&gt; resolve(err ? &apos;&apos; : data)));
-    return this._parseConfig(await loadConfig(resolve(args.config)));
+    return observable.map(servers =&gt; this.servers = servers);
   }
 
   /**
    * Runs the application.
-   * @return {Promise} Completes when the reverse proxy has been started.
+   * @return {Observable} Completes when the reverse proxy has been started.
    */
-  async run() {
+  run() {
     // Parse the command line arguments.
     const format = {
-      asInteger: value =&gt; parseInt(value, 10),
-      asIntegerIfNumeric: value =&gt; /^\d+$/.test(value) ? parseInt(value, 10) : value
+      asInteger: value =&gt; Number.parseInt(value, 10),
+      asIntegerIfNumeric: value =&gt; /^\d+$/.test(value) ? Number.parseInt(value, 10) : value
     };
 
     program._name = &apos;reverse-proxy&apos;;
@@ -120,100 +135,96 @@ export class Application {
     if (!program.config &amp;&amp; !program.target) program.help();
 
     // Start the proxy server.
-    try {
-      let config = await this.loadConfig(program);
-      if (!config.length) throw new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;);
+    return this.init(program)
+      .mergeMap(() =&gt; {
+        if (!this.servers.length) return Observable.throw(new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;));
+        return this._startServers();
+      })
+      .do({complete: () =&gt; {
+        if (program.user) this._setUser(program.user);
+      }});
+  }
 
-      await this.startServers(config.map(options =&gt; new Server(options)));
-      if (program.user) this.setUser(program.user);
+  /**
+   * Parses the specified configuration.
+   * @param {string} data A string specifying the application configuration.
+   * @return {Observable&lt;Server[]&gt;} The server instances corresponding to the parsed configuration.
+   */
+  _parseConfig(data) {
+    data = data.trim();
+    if (!data.length) return Observable.throw(new Error(&apos;Invalid configuration data.&apos;));
+
+    /* eslint-disable no-extra-parens */
+    let config;
+    let firstChar = data[0];
+    let lastChar = data[data.length - 1];
+    let isJson = (firstChar == &apos;[&apos; &amp;&amp; lastChar == &apos;]&apos;) || (firstChar == &apos;{&apos; &amp;&amp; lastChar == &apos;}&apos;);
+    /* eslint-enable no-extra-parens */
+
+    try {
+      if (!isJson) {
+        config = [];
+        loadYAML(data, options =&gt; config.push(options));
+      }
+      else {
+        config = JSON.parse(data);
+        if (!Array.isArray(config)) config = [config];
+      }
+
+      if (!config.every(value =&gt; typeof value == &apos;object&apos; &amp;&amp; value))
+        throw new Error(&apos;Invalid configuration format.&apos;);
     }
 
     catch (err) {
-      console.error(this.debug ? err.stack : err.message);
-      process.exit(1);
+      return Observable.throw(err);
     }
 
-    return null;
+    const loadCert = Observable.bindNodeCallback(readFile);
+    return Observable.from(config).mergeMap(options =&gt; {
+      if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
+        return Observable.throw(new Error(&apos;You must provide at least a target or a routing table.&apos;));
+
+      if (!(&apos;address&apos; in options)) options.address = program.address;
+      if (!(&apos;port&apos; in options)) options.port = program.port;
+      if (!(&apos;ssl&apos; in options)) return Observable.of(new Server(options));
+
+      let keys = [&apos;ca&apos;, &apos;cert&apos;, &apos;key&apos;, &apos;pfx&apos;].filter(key =&gt; key in options.ssl);
+      let observables = keys.map(key =&gt; loadCert(options.ssl[key]));
+      return Observable.zip(...observables)
+        .do(certs =&gt; { for (let i = 0; i &lt; keys.length; i++) options.ssl[keys[i]] = certs[i]; })
+        .map(() =&gt; new Server(options));
+    }).toArray();
   }
 
   /**
    * Sets the user identity of the application process.
    * @param {number|string} userId The user identifier.
    */
-  setUser(userId) {
-    if (typeof process.setuid != &apos;function&apos;) this.log(&apos;Changing the process user is not supported on this platform.&apos;);
+  _setUser(userId) {
+    if (typeof process.setuid != &apos;function&apos;)
+      console.error(&apos;Changing the process user is not supported on this platform.&apos;);
     else {
-      this.log(`Drop user privileges to: ${userId}`);
+      console.log(`Drop user privileges to &quot;${userId}&quot;`);
       process.setuid(userId);
     }
   }
 
   /**
-   * Starts the specified reverse proxy instances.
-   * @param {Server[]} servers The list of servers to start.
-   * @return {Promise} Completes when all servers have been started.
+   * Starts the reverse proxy instances.
+   * @return {Observable} Completes when all servers have been started.
    */
-  async startServers(servers) {
+  _startServers() {
     let done = () =&gt; {};
     let logger = morgan(this.debug ? &apos;dev&apos; : Application.LOG_FORMAT);
 
-    return Promise.all(servers.map(server =&gt; {
-      if (!program.silent) {
-        server.on(&apos;close&apos;, () =&gt; console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
-        server.on(&apos;error&apos;, error =&gt; console.error(this.debug ? error.stack : error.message));
-        server.on(&apos;listening&apos;, () =&gt; console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
-        server.on(&apos;request&apos;, (request, response) =&gt; logger(request, response, done));
-      }
+    return Observable.merge(...this.servers.map(server =&gt; {
+      server.onClose.subscribe(() =&gt; console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
+      server.onError.subscribe(error =&gt; console.error(this.debug ? error : error.message));
+      server.onListening.subscribe(() =&gt; console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
+      if (!program.silent) server.onRequest.subscribe(({request, response}) =&gt; logger(request, response, done));
 
       return server.listen();
     }));
-  }
-
-  /**
-   * Parses the specified configuration.
-   * @param {string} data A string specifying the application configuration.
-   * @return {Promise&lt;Array&gt;} An array of objects corresponding to the parsed configuration.
-   */
-  async _parseConfig(data) {
-    data = data.trim();
-    if (!data.length) throw new Error(&apos;Invalid configuration data.&apos;);
-
-    /* eslint-disable no-extra-parens */
-    let firstChar = data[0];
-    let lastChar = data[data.length - 1];
-    let isJson = (firstChar == &apos;[&apos; &amp;&amp; lastChar == &apos;]&apos;) || (firstChar == &apos;{&apos; &amp;&amp; lastChar == &apos;}&apos;);
-    /* eslint-enable no-extra-parens */
-
-    let config;
-    if (!isJson) {
-      config = [];
-      loadYAML(data, options =&gt; config.push(options));
-    }
-    else {
-      config = JSON.parse(data);
-      if (!Array.isArray(config)) config = [config];
-    }
-
-    const loadCert = file =&gt; new Promise((resolve, reject) =&gt; readFile(file, (err, data) =&gt; {
-      if (err) reject(err);
-      else resolve(data);
-    }));
-
-    for (let options of config) {
-      if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
-        throw new Error(&apos;You must provide at least a target or a routing table.&apos;);
-
-      if (!(&apos;address&apos; in options)) options.address = program.address;
-      if (!(&apos;port&apos; in options)) options.port = program.port;
-
-      if (&apos;ssl&apos; in options) {
-        let keys = [&apos;ca&apos;, &apos;cert&apos;, &apos;key&apos;, &apos;pfx&apos;].filter(cert =&gt; cert in options.ssl);
-        let certs = await Promise.all(keys.map(cert =&gt; loadCert(options.ssl[cert])));
-        for (let i = 0; i &lt; keys.length; i++) options.ssl[keys[i]] = certs[i];
-      }
-    }
-
-    return config;
   }
 }
 </code></pre>

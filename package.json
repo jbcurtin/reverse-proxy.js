@@ -1,56 +1,56 @@
 {
-  "description": "Simple reverse proxy server supporting WebSockets.",
-  "homepage": "https://github.com/cedx/reverse-proxy.js",
-  "name": "@cedx/reverse-proxy",
-
   "author": "Cédric Belin <cedric@belin.io>",
   "bugs": "https://github.com/cedx/reverse-proxy.js/issues",
+  "description": "Observable-based reverse proxy server supporting WebSockets.",
+  "homepage": "https://github.com/cedx/reverse-proxy.js",
   "license": "Apache-2.0",
-  "preferGlobal": true,
-  "repository": "cedx/reverse-proxy.js",
-  "version": "4.0.0",
-
   "main": "./lib/index",
   "module": "./src/index",
-
+  "name": "@cedx/reverse-proxy",
+  "preferGlobal": true,
+  "repository": "cedx/reverse-proxy.js",
+  "version": "6.0.0",
   "bin": {
     "reverse-proxy": "./bin/cli.js"
   },
   "dependencies": {
-    "commander": "^2.9.0",
+    "commander": "^2.11.0",
     "http-proxy": "^1.16.2",
-    "js-yaml": "^3.8.3",
-    "morgan": "^1.8.1"
+    "js-yaml": "^3.8.4",
+    "morgan": "^1.8.2",
+    "rxjs": "^5.4.2"
   },
   "devDependencies": {
-    "@cedx/coveralls": "^0.8.0",
-    "@cedx/gulp-david": "^7.0.0",
-    "babel-preset-env": "^1.2.2",
-    "babel-register": "^6.24.0",
-    "chai": "^3.5.0",
-    "del": "^2.2.2",
+    "@cedx/coveralls": "^2.0.0",
+    "@cedx/gulp-david": "^7.0.1",
+    "babel-preset-env": "^1.6.0",
+    "babel-register": "^6.24.1",
+    "chai": "^4.1.0",
+    "del": "^3.0.0",
     "esdoc": "^0.5.2",
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
-    "gulp-eslint": "^3.0.1",
-    "mocha": "^3.3.0",
+    "gulp-eslint": "^4.0.0",
+    "mocha": "^3.4.2",
     "nsp": "^2.6.3",
-    "nyc": "^10.3.2"
+    "nyc": "^11.0.3"
   },
   "engines": {
-    "node": ">=7.6.0"
+    "node": ">=8.0.0"
   },
   "keywords": [
     "http",
+    "observable",
     "proxy",
     "reverse",
     "routing",
+    "rxjs",
     "server",
     "websocket"
   ],
   "scripts": {
     "coverage": "coveralls --file=var/lcov.info",
-    "prepublish": "gulp build",
+    "prepare": "gulp build",
     "start": "gulp watch",
     "test": "nyc --report-dir=var --reporter=lcovonly mocha --compilers=js:babel-register --recursive"
   }

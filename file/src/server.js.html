@@ -39,15 +39,15 @@
 </nav>
 
 <div class="content" data-ice="content"><h1 data-ice="title">src/server.js</h1>
-<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import EventEmitter from &apos;events&apos;;
-import {createServer, STATUS_CODES} from &apos;http&apos;;
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import {createServer, STATUS_CODES} from &apos;http&apos;;
 import {createServer as createSecureServer} from &apos;https&apos;;
 import {createProxyServer} from &apos;http-proxy&apos;;
+import {Observable, Subject} from &apos;rxjs&apos;;
 
 /**
  * Acts as an intermediary for requests from clients seeking resources from other servers.
  */
-export class Server extends EventEmitter {
+export class Server {
 
   /**
    * The default address that the server is listening on.
@@ -70,13 +70,12 @@ export class Server extends EventEmitter {
    * @param {object} [options] An object specifying the server settings.
    */
   constructor(options = {}) {
-    super();
 
     /**
      * The routing table.
      * @type {Map}
      */
-    this.routes = new Map();
+    this.routes = new Map;
     if (&apos;routes&apos; in options) for (let host in options.routes) this.routes.set(host, this._normalizeRoute(options.routes[host]));
     if (&apos;target&apos; in options) this.routes.set(&apos;*&apos;, this._normalizeRoute(options.target));
 
@@ -87,12 +86,36 @@ export class Server extends EventEmitter {
     this._httpService = null;
 
     /**
+     * The handler of &quot;close&quot; events.
+     * @type {Subject}
+     */
+    this._onClose = new Subject();
+
+    /**
+     * The handler of &quot;error&quot; events.
+     * @type {Subject&lt;Error&gt;}
+     */
+    this._onError = new Subject();
+
+    /**
+     * The handler of &quot;listening&quot; events.
+     * @type {Subject}
+     */
+    this._onListening = new Subject();
+
+    /**
+     * The handler of &quot;request&quot; events.
+     * @type {Subject&lt;object&gt;}
+     */
+    this._onRequest = new Subject();
+
+    /**
      * The server settings.
-     * @type {Map}
+     * @type {object}
      */
     this._options = {
       address: typeof options.address == &apos;string&apos; ? options.address : Server.DEFAULT_ADDRESS,
-      port: typeof options.port == &apos;number&apos; ? options.port : Server.DEFAULT_PORT,
+      port: Number.isInteger(options.port) ? options.port : Server.DEFAULT_PORT,
       proxy: typeof options.proxy == &apos;object&apos; &amp;&amp; options.proxy ? options.proxy : null,
       ssl: typeof options.ssl == &apos;object&apos; &amp;&amp; options.ssl ? options.ssl : null
     };
@@ -121,6 +144,38 @@ export class Server extends EventEmitter {
   }
 
   /**
+   * The stream of &quot;close&quot; events.
+   * @type {Observable}
+   */
+  get onClose() {
+    return this._onClose.asObservable();
+  }
+
+  /**
+   * The stream of &quot;error&quot; events.
+   * @type {Observable&lt;Error&gt;}
+   */
+  get onError() {
+    return this._onError.asObservable();
+  }
+
+  /**
+   * The stream of &quot;listening&quot; events.
+   * @type {Observable}
+   */
+  get onListening() {
+    return this._onListening.asObservable();
+  }
+
+  /**
+   * The stream of &quot;request&quot; events.
+   * @type {Observable&lt;object&gt;}
+   */
+  get onRequest() {
+    return this._onRequest.asObservable();
+  }
+
+  /**
    * The port that the server is listening on.
    * @type {number}
    */
@@ -130,40 +185,43 @@ export class Server extends EventEmitter {
 
   /**
    * Stops the server from accepting new connections. It does nothing if the server is already closed.
-   * @return {Promise} Completes when the server is finally closed.
+   * @return {Observable} Completes when the server is finally closed.
    * @emits {*} The &quot;close&quot; event.
    */
-  async close() {
-    return !this.listening ? null : new Promise(resolve =&gt; this._httpService.close(() =&gt; {
+  close() {
+    if (!this.listening) return Observable.of(null);
+
+    const close = Observable.bindCallback(this._httpService.close.bind(this._httpService));
+    return close().do(() =&gt; {
       this._httpService = null;
       this._proxyService = null;
-      this.emit(&apos;close&apos;);
-      resolve(null);
-    }));
+      this._onClose.next();
+    });
   }
 
   /**
    * Begin accepting connections. It does nothing if the server is already started.
    * @param {number} [port] The port that the server should run on.
    * @param {string} [address] The address that the server should run on.
-   * @return {Promise&lt;number&gt;} The port that the server is running on.
+   * @return {Observable&lt;number&gt;} The port that the server is running on.
    * @emits {*} The &quot;listening&quot; event.
    */
-  async listen(port = -1, address = &apos;&apos;) {
-    if (this.listening) return this.port;
+  listen(port = this.port, address = this.address) {
+    if (this.listening) return Observable.of(this.port);
 
     let requestHandler = this._onHTTPRequest.bind(this);
     this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);
-    this._httpService.on(&apos;error&apos;, error =&gt; this.emit(&apos;error&apos;, error));
+    this._httpService.on(&apos;error&apos;, error =&gt; this._onError.next(error));
     this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
 
     this._proxyService = createProxyServer(this._options.proxy);
     this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
 
-    return new Promise(resolve =&gt; this._httpService.listen(port &gt;= 0 ? port : this.port, address.length ? address : this.address, () =&gt; {
-      this.emit(&apos;listening&apos;);
-      resolve(this.port);
-    }));
+    const listen = Observable.bindCallback(this._httpService.listen.bind(this._httpService));
+    return listen(port, address).map(() =&gt; {
+      this._onListening.next();
+      return this.port;
+    });
   }
 
   /**
@@ -198,7 +256,7 @@ export class Server extends EventEmitter {
         break;
 
       default:
-        throw new Error(&apos;The value has an invalid format.&apos;);
+        throw new Error(&apos;The route has an invalid format.&apos;);
     }
 
     if (typeof value.headers != &apos;object&apos; || !value.headers) value.headers = {};
@@ -215,10 +273,10 @@ export class Server extends EventEmitter {
    * Handles an HTTP request to a target.
    * @param {http.IncomingMessage} request The request sent by the client.
    * @param {http.ServerResponse} response The response sent by the server.
-   * @emits {http.IncomingMessage} The &quot;request&quot; event.
+   * @emits {object} The &quot;request&quot; event.
    */
   _onHTTPRequest(request, response) {
-    this.emit(&apos;request&apos;, request, response);
+    this._onRequest.next({request, response});
 
     let hostname = this._getHostname(request);
     let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
@@ -238,7 +296,7 @@ export class Server extends EventEmitter {
    * @emits {Error} The &quot;error&quot; event.
    */
   _onRequestError(error, request, response) {
-    this.emit(&apos;error&apos;, error);
+    this._onError.next(error);
     this._sendStatus(response, 502);
   }
 

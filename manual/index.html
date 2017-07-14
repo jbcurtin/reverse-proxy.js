@@ -41,8 +41,12 @@
 <div data-ice="manual" data-toc-name="changelog">
     <ul class="manual-toc">
       
-    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#changelog" data-ice="link">Changelog</a></li>
-<li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-4-0-0" data-ice="link">Version 4.0.0</a></li>
+    <li data-ice="manualNav" class="indent-h1 manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html" data-ice="link">Changelog</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-6-0-0" data-ice="link">Version 6.0.0</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-5-0-1" data-ice="link">Version 5.0.1</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-5-0-0" data-ice="link">Version 5.0.0</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-4-0-1" data-ice="link">Version 4.0.1</a></li>
+<li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-4-0-0" data-ice="link">Version 4.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-3-1-0" data-ice="link">Version 3.1.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-3-0-0" data-ice="link">Version 3.0.0</a></li>
 <li data-ice="manualNav" class="indent-h2" data-link="manual/changelog/CHANGELOG.html"><a href="manual/changelog/CHANGELOG.html#version-2-2-0" data-ice="link">Version 2.2.0</a></li>
@@ -153,9 +157,25 @@
       </div>
     </div>
 <div class="manual-card-wrap" data-ice="cards">
-      <h1 data-ice="label" class="manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;"><span data-ice="label-inner">Version 4.0.0</span></h1>
+      <h1 data-ice="label" class="manual-color manual-color-changelog" data-section-count="&#x25A0;&#x25A0;&#x25A0;&#x25A0;&#x25A0;"><span data-ice="label-inner">Changelog</span></h1>
       <div class="manual-card">
-        <div data-ice="card"><h1>Version 4.0.0</h1><ul>
+        <div data-ice="card"><h1>Changelog</h1><p>This file contains highlights of what changes on each version of the <a href="https://www.npmjs.com/package/@cedx/reverse-proxy">Reverse-Proxy.js</a> package.</p><h2>Version 6.0.0</h2><ul>
+<li>Breaking change: raised the required <a href="https://nodejs.org">Node.js</a> version.</li>
+<li>Breaking change: restored the <a href="http://reactivex.io/intro.html">Observable</a> APIs.</li>
+<li>Added new unit tests.</li>
+<li>Updated the package dependencies.</li>
+</ul><h2>Version 5.0.1</h2><ul>
+<li>Fixed a code generation bug.</li>
+<li>Updated the package dependencies.</li>
+</ul><h2>Version 5.0.0</h2><ul>
+<li>Breaking change: renamed the <code>Application#loadConfig</code> method to <code>init</code>.</li>
+<li>Breaking change: renamed the <code>Application#setUser</code> method to <code>_setUser</code>.</li>
+<li>Breaking change: renamed the <code>Application#startServers</code> method to <code>_startServers</code>.</li>
+<li>Added the <code>Application#servers</code> property.</li>
+<li>Added new unit tests.</li>
+</ul><h2>Version 4.0.1</h2><ul>
+<li>Fixed the <a href="https://github.com/cedx/reverse-proxy.js/issues/5">issue #5</a>: regression in the <code>Application#setUser</code> method.</li>
+</ul><h2>Version 4.0.0</h2><ul>
 <li>Breaking change: removed the <code>Application#log</code> method.</li>
 <li>The response object is also provided in <code>request</code> events.</li>
 <li>The routing table of a <code>Server</code> is now exposed as the <code>routes</code> property.</li>
@@ -242,7 +262,7 @@
 </ul><h2>Version 0.3.0</h2><ul>
 <li>Breaking change: ported the callback-based API to <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promises</a>.</li>
 <li>Using <a href="http://gulpjs.com">Gulp.js</a> as build system.</li>
-<li>Fixed <a href="https://github.com/cedx/reverse-proxy.js/issues/1">issue #1</a>: using a Unix system for publishing the package on <a href="https://www.npmjs.com">npm</a>.</li>
+<li>Fixed the <a href="https://github.com/cedx/reverse-proxy.js/issues/1">issue #1</a>: using a Unix system for publishing the package on <a href="https://www.npmjs.com">npm</a>.</li>
 <li>Upgraded the package dependencies.</li>
 </ul><h2>Version 0.2.1</h2><ul>
 <li>Added <code>Application</code> class, used in CLI script.</li>
@@ -258,7 +278,7 @@
 </ul><h2>Version 0.1.0</h2><ul>
 <li>Initial release.</li>
 </ul></div>
-        <a data-ice="link" href="manual/changelog/CHANGELOG.html#version-4-0-0"></a>
+        <a data-ice="link" href="manual/changelog/CHANGELOG.html"></a>
       </div>
     </div>
 </div>

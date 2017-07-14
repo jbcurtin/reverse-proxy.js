@@ -42,7 +42,9 @@
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
 import {expect} from &apos;chai&apos;;
+import {STATUS_CODES} from &apos;http&apos;;
 import {describe, it} from &apos;mocha&apos;;
+import {Observable, Subject} from &apos;rxjs&apos;;
 import {Server} from &apos;../src/index&apos;;
 
 /**
@@ -55,7 +57,7 @@ describe(&apos;Server&apos;, () =&gt; {
    */
   describe(&apos;#address&apos;, () =&gt; {
     it(&apos;should have an &quot;any IPv4&quot; address as the default address&apos;, () =&gt; {
-      expect(new Server().address).to.equal(Server.DEFAULT_ADDRESS);
+      expect((new Server).address).to.equal(Server.DEFAULT_ADDRESS);
     });
 
     it(&apos;should have the same host as the specified one&apos;, () =&gt; {
@@ -67,13 +69,59 @@ describe(&apos;Server&apos;, () =&gt; {
    * @test {Server#listening}
    */
   describe(&apos;#listening&apos;, () =&gt; {
-    it(&apos;should return whether the server is listening&apos;, async () =&gt; {
+    it(&apos;should return whether the server is listening&apos;, done =&gt; {
       let server = new Server({address: &apos;127.0.0.1&apos;, port: 0});
       expect(server.listening).to.be.false;
-      await server.listen();
-      expect(server.listening).to.be.true;
-      await server.close();
-      expect(server.listening).to.be.false;
+
+      server.listen()
+        .do(() =&gt; expect(server.listening).to.be.true)
+        .mergeMap(() =&gt; server.close())
+        .do(() =&gt; expect(server.listening).to.be.false)
+        .subscribe(null, done, done);
+    });
+  });
+
+  /**
+   * @test {Server#onClose}
+   */
+  describe(&apos;#onClose&apos;, () =&gt; {
+    it(&apos;should return an `Observable` instead of the underlying `Subject`&apos;, () =&gt; {
+      let stream = new Server().onClose;
+      expect(stream).to.be.instanceof(Observable);
+      expect(stream).to.not.be.instanceof(Subject);
+    });
+  });
+
+  /**
+   * @test {Server#onError}
+   */
+  describe(&apos;#onError&apos;, () =&gt; {
+    it(&apos;should return an `Observable` instead of the underlying `Subject`&apos;, () =&gt; {
+      let stream = new Server().onError;
+      expect(stream).to.be.instanceof(Observable);
+      expect(stream).to.not.be.instanceof(Subject);
+    });
+  });
+
+  /**
+   * @test {Server#onListening}
+   */
+  describe(&apos;#onListening&apos;, () =&gt; {
+    it(&apos;should return an `Observable` instead of the underlying `Subject`&apos;, () =&gt; {
+      let stream = new Server().onListening;
+      expect(stream).to.be.instanceof(Observable);
+      expect(stream).to.not.be.instanceof(Subject);
+    });
+  });
+
+  /**
+   * @test {Server#onRequest}
+   */
+  describe(&apos;#onRequest&apos;, () =&gt; {
+    it(&apos;should return an `Observable` instead of the underlying `Subject`&apos;, () =&gt; {
+      let stream = new Server().onRequest;
+      expect(stream).to.be.instanceof(Observable);
+      expect(stream).to.not.be.instanceof(Subject);
     });
   });
 
@@ -82,7 +130,7 @@ describe(&apos;Server&apos;, () =&gt; {
    */
   describe(&apos;#port&apos;, () =&gt; {
     it(&apos;should have 3000 as the default port&apos;, () =&gt; {
-      expect(new Server().port).to.equal(Server.DEFAULT_PORT);
+      expect((new Server).port).to.equal(Server.DEFAULT_PORT);
     });
 
     it(&apos;should have the same port as the specified one&apos;, () =&gt; {
@@ -91,15 +139,36 @@ describe(&apos;Server&apos;, () =&gt; {
   });
 
   /**
+   * @test {Server#routes}
+   */
+  describe(&apos;#routes&apos;, () =&gt; {
+    it(&apos;should be empty by default&apos;, () =&gt; {
+      expect((new Server).routes.size).to.equal(0);
+    });
+
+    it(&apos;should create a default route if a target is specified&apos;, () =&gt; {
+      let routes = new Server({target: 9000}).routes;
+      expect(routes.size).to.equal(1);
+      expect(routes.get(&apos;*&apos;)).to.be.an(&apos;object&apos;).and.have.property(&apos;uri&apos;);
+    });
+
+    it(&apos;should normalize the specified targets&apos;, () =&gt; {
+      let routes = new Server({routes: {&apos;belin.io&apos;: 9000}}).routes;
+      expect(routes.get(&apos;belin.io&apos;)).to.be.an(&apos;object&apos;)
+        .and.have.property(&apos;uri&apos;).that.equal(&apos;http://127.0.0.1:9000&apos;);
+    });
+  });
+
+  /**
    * @test {Server#_getHostname}
    */
   describe(&apos;#_getHostname()&apos;, () =&gt; {
     it(&apos;it should return &quot;*&quot; if there is no &quot;Host&quot; header in the request&apos;, () =&gt; {
-      expect(new Server()._getHostname({headers: {}})).to.equal(&apos;*&apos;);
+      expect((new Server)._getHostname({headers: {}})).to.equal(&apos;*&apos;);
     });
 
     it(&apos;it should return the &quot;Host&quot; header found in the request, without the port number&apos;, () =&gt; {
-      expect(new Server()._getHostname({headers: {host: &apos;belin.io:8080&apos;}})).to.equal(&apos;belin.io&apos;);
+      expect((new Server)._getHostname({headers: {host: &apos;belin.io:8080&apos;}})).to.equal(&apos;belin.io&apos;);
     });
   });
 
@@ -108,22 +177,58 @@ describe(&apos;Server&apos;, () =&gt; {
    */
   describe(&apos;#_normalizeRoute()&apos;, () =&gt; {
     it(&apos;it should normalize a port on the local host&apos;, () =&gt; {
-      expect(new Server()._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
-      expect(new Server()._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
+      expect((new Server)._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
+      expect((new Server)._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: &apos;http://127.0.0.1:3000&apos;});
     });
 
     it(&apos;it should normalize an authority&apos;, () =&gt; {
-      expect(new Server()._normalizeRoute(&apos;domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
-      expect(new Server()._normalizeRoute({uri: &apos;domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
+      expect((new Server)._normalizeRoute(&apos;domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
+      expect((new Server)._normalizeRoute({uri: &apos;domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;http://domain.com:8080&apos;});
     });
 
     it(&apos;it should normalize an origin&apos;, () =&gt; {
-      expect(new Server()._normalizeRoute(&apos;https://domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
-      expect(new Server()._normalizeRoute({uri: &apos;https://domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
+      expect((new Server)._normalizeRoute(&apos;https://domain.com:8080&apos;)).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
+      expect((new Server)._normalizeRoute({uri: &apos;https://domain.com:8080&apos;})).to.deep.equal({headers: {}, uri: &apos;https://domain.com:8080&apos;});
+    });
+
+    it(&apos;it should normalize the HTTP headers&apos;, () =&gt; {
+      let headers = {&apos;X-Header&apos;: &apos;X-Value&apos;};
+      expect((new Server)._normalizeRoute({headers, uri: &apos;https://domain.com:8080&apos;}))
+        .to.deep.equal({headers: {&apos;x-header&apos;: &apos;X-Value&apos;}, uri: &apos;https://domain.com:8080&apos;});
     });
 
     it(&apos;it should throw an error if the route has an invalid format&apos;, () =&gt; {
-      expect(() =&gt; new Server()._normalizeRoute([])).to.throw();
+      expect(() =&gt; (new Server)._normalizeRoute([3000])).to.throw();
+    });
+  });
+
+  /**
+   * @test {Server#_sendStatus}
+   */
+  describe(&apos;#_sendStatus()&apos;, () =&gt; {
+    const Response = class {
+      /* eslint-disable require-jsdoc */
+      constructor() {
+        this.body = &apos;&apos;;
+        this.status = 200;
+      }
+      end(message) { this.body = message; }
+      writeHead(status) { this.status = status; }
+      /* eslint-enable require-jsdoc */
+    };
+
+    it(&apos;it should set the response status&apos;, () =&gt; {
+      let response = new Response;
+      expect(response.status).to.equal(200);
+      (new Server)._sendStatus(response, 404);
+      expect(response.status).to.equal(404);
+    });
+
+    it(&apos;it should set the response body&apos;, () =&gt; {
+      let response = new Response;
+      expect(response.body).to.be.empty;
+      (new Server)._sendStatus(response, 404);
+      expect(response.body).to.equal(STATUS_CODES[404]);
     });
   });
 });
