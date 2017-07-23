@@ -32,8 +32,8 @@
 <nav class="navigation" data-ice="nav"><div>
   <ul>
     
-  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/application.js~Application.html">Application</a></span></span></li>
-<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/server.js~Server.html">Server</a></span></span></li>
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -41,9 +41,8 @@
 <div class="content" data-ice="content"><h1 data-ice="title">test/application_test.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
-import {expect} from &apos;chai&apos;;
-import {describe, it} from &apos;mocha&apos;;
-import {Application, Server} from &apos;../src/index&apos;;
+const {expect} = require(&apos;chai&apos;);
+const {Application, Server} = require(&apos;../lib&apos;);
 
 /**
  * @test {Application}
@@ -94,7 +93,7 @@ describe(&apos;Application&apos;, () =&gt; {
 
     it(&apos;should initialize the `servers` property from the JSON configuration&apos;, done =&gt; {
       let app = new Application;
-      app.init({config: `${__dirname}/../example/json/basic_standalone.json`}).subscribe(() =&gt; {
+      app.init({config: &apos;example/json/basic_standalone.json&apos;}).subscribe(() =&gt; {
         expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
         expect(app.servers[0].port).to.equal(80);
       }, done, done);
@@ -102,7 +101,7 @@ describe(&apos;Application&apos;, () =&gt; {
 
     it(&apos;should initialize the `servers` property from the YAML configuration&apos;, done =&gt; {
       let app = new Application;
-      app.init({config: `${__dirname}/../example/yaml/basic_standalone.yaml`}).subscribe(() =&gt; {
+      app.init({config: &apos;example/yaml/basic_standalone.yaml&apos;}).subscribe(() =&gt; {
         expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
         expect(app.servers[0].port).to.equal(80);
       }, done, done);
@@ -169,7 +168,7 @@ describe(&apos;Application&apos;, () =&gt; {
 
         let key = config[0]._options.ssl.key;
         expect(key).to.be.instanceof(Buffer);
-        expect(key.toString()).to.contain(&apos;-----BEGIN CERTIFICATE-----&apos;);
+        expect(key.toString()).to.contain(&apos;-----BEGIN ENCRYPTED PRIVATE KEY-----&apos;);
       }, done, done);
     });
   });

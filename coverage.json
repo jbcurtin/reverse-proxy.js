@@ -3,12 +3,12 @@
   "expectCount": 22,
   "actualCount": 22,
   "files": {
-    "src/application.js": {
+    "lib/application.js": {
       "expectCount": 8,
       "actualCount": 8,
       "undocumentLines": []
     },
-    "src/server.js": {
+    "lib/server.js": {
       "expectCount": 14,
       "actualCount": 14,
       "undocumentLines": []

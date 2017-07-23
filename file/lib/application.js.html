@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <base data-ice="baseUrl" href="../../">
-  <title data-ice="title">src/application.js | Reverse-Proxy.js API Document</title>
+  <title data-ice="title">lib/application.js | Reverse-Proxy.js API Document</title>
   <link type="text/css" rel="stylesheet" href="css/style.css">
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
@@ -32,26 +32,28 @@
 <nav class="navigation" data-ice="nav"><div>
   <ul>
     
-  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/application.js~Application.html">Application</a></span></span></li>
-<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/server.js~Server.html">Server</a></span></span></li>
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
 </ul>
 </div>
 </nav>
 
-<div class="content" data-ice="content"><h1 data-ice="title">src/application.js</h1>
-<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">import program from &apos;commander&apos;;
-import {readFile} from &apos;fs&apos;;
-import {safeLoadAll as loadYAML} from &apos;js-yaml&apos;;
-import morgan from &apos;morgan&apos;;
-import {Observable} from &apos;rxjs&apos;;
+<div class="content" data-ice="content"><h1 data-ice="title">lib/application.js</h1>
+<pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
-import {version as pkgVersion} from &apos;../package.json&apos;;
-import {Server} from &apos;./server&apos;;
+const program = require(&apos;commander&apos;);
+const {readFile} = require(&apos;fs&apos;);
+const {safeLoadAll: loadYAML} = require(&apos;js-yaml&apos;);
+const morgan = require(&apos;morgan&apos;);
+const {Observable} = require(&apos;rxjs&apos;);
+
+const {version: pkgVersion} = require(&apos;../package.json&apos;);
+const {Server} = require(&apos;./server&apos;);
 
 /**
  * Represents an application providing functionalities specific to console requests.
  */
-export class Application {
+exports.Application = class Application {
 
   /**
    * The format used for logging the requests.
@@ -226,7 +228,7 @@ export class Application {
       return server.listen();
     }));
   }
-}
+};
 </code></pre>
 
 </div>

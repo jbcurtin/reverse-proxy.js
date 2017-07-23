@@ -32,8 +32,8 @@
 <nav class="navigation" data-ice="nav"><div>
   <ul>
     
-  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/application.js~Application.html">Application</a></span></span></li>
-<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/server.js~Server.html">Server</a></span></span></li>
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -41,11 +41,10 @@
 <div class="content" data-ice="content"><h1 data-ice="title">test/server_test.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
-import {expect} from &apos;chai&apos;;
-import {STATUS_CODES} from &apos;http&apos;;
-import {describe, it} from &apos;mocha&apos;;
-import {Observable, Subject} from &apos;rxjs&apos;;
-import {Server} from &apos;../src/index&apos;;
+const {expect} = require(&apos;chai&apos;);
+const {STATUS_CODES} = require(&apos;http&apos;);
+const {Observable, Subject} = require(&apos;rxjs&apos;);
+const {Server} = require(&apos;../lib&apos;);
 
 /**
  * @test {Server}
