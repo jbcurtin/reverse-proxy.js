@@ -3,23 +3,20 @@
 <head>
   <meta charset="utf-8">
   <base data-ice="baseUrl">
-  <title data-ice="title">Reverse-Proxy.js API Document</title>
+  <title data-ice="title">Home | Reverse-Proxy.js</title>
   <link type="text/css" rel="stylesheet" href="css/style.css">
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
-  
-  
   <script src="script/manual.js"></script>
-</head>
+<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
-  <a href="./">Home</a>
+  <a href="./" style="display: flex; align-items: center;"><img src="./image/brand_logo.png" style="width:34px;"></a>
   <a href="./manual/index.html" data-ice="manualHeaderLink">Manual</a>
   <a href="identifiers.html">Reference</a>
   <a href="source.html">Source</a>
   <a href="test.html" data-ice="testLink">Test</a>
-  
   <div class="search-box">
   <span>
     <img src="./image/search.png">
@@ -27,7 +24,7 @@
   </span>
     <ul class="search-result"></ul>
   </div>
-</header>
+<a style="position:relative; top:3px;" href="https://github.com/cedx/reverse-proxy.js"><img width="20px" src="./image/github.png"></a></header>
 
 <nav class="navigation" data-ice="nav"><div>
   <ul>
@@ -38,12 +35,10 @@
 </div>
 </nav>
 
-<div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="reverse-proxy-js">Reverse-Proxy.js</h1>
-<p><img src="https://img.shields.io/badge/node-%3E%3D8.0-brightgreen.svg" alt="Runtime"> <img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/npm/l/@cedx/reverse-proxy.svg" alt="License"> <img src="https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg" alt="Downloads"> <img src="https://david-dm.org/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg" alt="Coverage"> <img src="https://travis-ci.org/cedx/reverse-proxy.js.svg" alt="Build"></p>
-<p><a href="http://reactivex.io/intro.html">Observable</a>-based reverse proxy server supporting WebSockets, implemented in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a> and based on .</p>
+<div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="reverse-proxy-js">Reverse-Proxy.js</h1><p><img src="https://img.shields.io/badge/node-%3E%3D8.0-brightgreen.svg" alt="Runtime"> <img src="https://img.shields.io/npm/v/@cedx/reverse-proxy.svg" alt="Release"> <img src="https://img.shields.io/npm/l/@cedx/reverse-proxy.svg" alt="License"> <img src="https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg" alt="Downloads"> <img src="https://david-dm.org/cedx/reverse-proxy.js.svg" alt="Dependencies"> <img src="https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg" alt="Coverage"> <img src="https://travis-ci.org/cedx/reverse-proxy.js.svg" alt="Build"></p>
+<p><a href="http://reactivex.io/intro.html">Observable</a>-based reverse proxy server supporting WebSockets, implemented in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a>.</p>
 <p>Let&apos;s suppose you were running multiple HTTP application servers, but you only wanted to expose one machine to the Internet. You could setup Reverse-Proxy.js on that one machine and then reverse-proxy the incoming HTTP requests to locally running services which were not exposed to the outside network.</p>
-<h2 id="features">Features</h2>
-<ul>
+<h2 id="features">Features</h2><ul>
 <li>Configuration based on simple <a href="http://www.json.org">JSON</a> or <a href="http://yaml.org">YAML</a> files.</li>
 <li>Routing tables based on host names.</li>
 <li>Multiple instances: allows to listen on several ports, with each one having its own target(s).</li>
@@ -51,15 +46,12 @@
 <li>Supports <a href="https://en.wikipedia.org/wiki/WebSocket">WebSockets</a> requests.</li>
 <li>Supports custom HTTP headers.</li>
 </ul>
-<h2 id="requirements">Requirements</h2>
-<p>The latest <a href="https://nodejs.org">Node.js</a> and <a href="https://www.npmjs.com">npm</a> versions.
-If you plan to play with the sources, you will also need the latest <a href="http://gulpjs.com">Gulp.js</a> version.</p>
-<h2 id="installing-via-npm-https-www-npmjs-com-">Installing via <a href="https://www.npmjs.com">npm</a></h2>
-<p>From a command prompt with administrator privileges, run:</p>
+<h2 id="requirements">Requirements</h2><p>The latest <a href="https://nodejs.org">Node.js</a> and <a href="https://www.npmjs.com">npm</a> versions.
+If you plan to play with the sources, you will also need the latest <a href="http://gulpjs.com">Gulp</a> version.</p>
+<h2 id="installing-via--a-href--https---www-npmjs-com--npm--a-">Installing via <a href="https://www.npmjs.com">npm</a></h2><p>From a command prompt with administrator privileges, run:</p>
 <pre><code class="lang-shell"><code class="source-code prettyprint">$ npm install --global @cedx/reverse-proxy</code>
 </code></pre>
-<h2 id="usage">Usage</h2>
-<p>This application provides a command line interface:</p>
+<h2 id="usage">Usage</h2><p>This application provides a command line interface:</p>
 <pre><code><code class="source-code prettyprint">$ reverse-proxy --help
 
   Usage: reverse-proxy [options]
@@ -76,8 +68,7 @@ If you plan to play with the sources, you will also need the latest <a href="htt
     -c, --config &lt;path&gt;      location of the configuration file for the reverse proxy
     -u, --user &lt;user&gt;        user to drop privileges to once server socket is bound
     --silent                 silence the log output from the reverse proxy</code>
-</code></pre><h3 id="setup-a-basic-stand-alone-proxy-server">Setup a basic stand-alone proxy server</h3>
-<p>From a command prompt:</p>
+</code></pre><h3 id="setup-a-basic-stand-alone-proxy-server">Setup a basic stand-alone proxy server</h3><p>From a command prompt:</p>
 <pre><code class="lang-shell"><code class="source-code prettyprint">$ reverse-proxy --port 80 --target 3000</code>
 </code></pre>
 <p>This will proxy all HTTP requests on port 80 on all network interfaces (e.g. <code>0.0.0.0</code>) to port 3000 on the same host (e. g. <code>127.0.0.1</code>). For a different target host:</p>
@@ -95,43 +86,36 @@ $ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data</c
 <li>an object with a <code>uri</code> property having the same format: <code>{&quot;uri&quot;: 3000}</code>, <code>{&quot;uri&quot;: &quot;domain.com:8080&quot;}</code> or <code>{&quot;uri&quot;: &quot;http://domain.com:8080&quot;}</code>.</li>
 </ul>
 </blockquote>
-<h3 id="using-https">Using HTTPS</h3>
-<p>A common use-case for proxying in conjunction with HTTPS is that you have some front-facing HTTPS server, but all of your internal traffic is HTTP. In this way, you can reduce the number of servers to which your CA and other important security files are deployed and reduce the computational overhead from HTTPS traffic.</p>
+<h3 id="using-https">Using HTTPS</h3><p>A common use-case for proxying in conjunction with HTTPS is that you have some front-facing HTTPS server, but all of your internal traffic is HTTP. In this way, you can reduce the number of servers to which your CA and other important security files are deployed and reduce the computational overhead from HTTPS traffic.</p>
 <p>If you want the proxy server to use HTTPS protocol, you need to provide a <code>ssl</code> key in your configuration file.</p>
-<p>This object will be used as the first argument to <a href="http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener"><code>https.createServer</code></a> function when instanciating the proxy server.
-Its structure is similar to the <code>options</code> parameter of <a href="http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener"><code>tls.createServer</code></a> function.</p>
+<p>This object will be used as the first argument to <a href="http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener"><code>https~createServer()</code></a> function when instanciating the proxy server.
+Its structure is similar to the <code>options</code> parameter of <a href="http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener"><code>tls~createServer()</code></a> function.</p>
 <p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/https_to_http.json"><code>https_to_http.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/https_to_http.yaml"><code>https_to_http.yaml</code></a> file in the <code>example</code> folder. The <code>cert</code> and <code>key</code> fields are file paths: the corresponding files are loaded by the CLI script.</p>
-<h3 id="proxy-requests-using-a-routing-table">Proxy requests using a routing table</h3>
-<p>A routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html">HTTP <code>Host</code> header</a>.</p>
+<h3 id="proxy-requests-using-a-routing-table">Proxy requests using a routing table</h3><p>A routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html">HTTP <code>Host</code> header</a>.</p>
 <p>To use hostname routing, you need to provide a <code>routes</code> key in your configuration file, instead of a <code>target</code> key. The value of this key is an object where keys are hostnames and values are target locations.
 Use an asterisk (<code>*</code>) as host name to define the route matched by default when a host name is not found.</p>
 <p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json"><code>routing_table.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml"><code>routing_table.yaml</code></a> file in the <code>example</code> folder.</p>
-<h3 id="listening-on-multiple-ports">Listening on multiple ports</h3>
-<p>In order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.</p>
+<h3 id="listening-on-multiple-ports">Listening on multiple ports</h3><p>In order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.</p>
 <p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json"><code>multiple_ports.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml"><code>multiple_ports.yaml</code></a> file in the <code>example</code> folder.</p>
-<h3 id="adding-http-headers-to-the-proxied-requests">Adding HTTP headers to the proxied requests</h3>
-<p>It can sometimes be useful to add some HTTP headers to the requests sent to the target servers.</p>
+<h3 id="adding-http-headers-to-the-proxied-requests">Adding HTTP headers to the proxied requests</h3><p>It can sometimes be useful to add some HTTP headers to the requests sent to the target servers.</p>
 <p>Let say that you have a remote service that needs basic authentication, but that you want to expose publicly. You could add an <code>Authorization</code> header to the proxied requests in order to let the remote service accept these requests.</p>
 <p>To add an header to all the proxied requests of a target, you must use the object notation for this target, and a <code>headers</code> property providing a map of the HTTP headers to set.</p>
 <blockquote>
 <p>The HTTP headers defined in this way will replace <strong>any</strong> existing headers with the same name.</p>
 </blockquote>
 <p>See the <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/http_headers.json"><code>http_headers.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/http_headers.yaml"><code>http_headers.yaml</code></a> file in the <code>example</code> folder.</p>
-<h2 id="configuration-schema">Configuration schema</h2>
-<p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml"><code>defaults.yaml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
-<h2 id="see-also">See also</h2>
-<ul>
+<h2 id="configuration-schema">Configuration schema</h2><p>The <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json"><code>defaults.json</code></a> or <a href="https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml"><code>defaults.yaml</code></a> file, in the <code>example</code> folder of this package, lists all available settings and their default values.</p>
+<h2 id="see-also">See also</h2><ul>
 <li><a href="https://cedx.github.io/reverse-proxy.js">API reference</a></li>
 <li><a href="https://coveralls.io/github/cedx/reverse-proxy.js">Code coverage</a></li>
 <li><a href="https://travis-ci.org/cedx/reverse-proxy.js">Continuous integration</a></li>
 </ul>
-<h2 id="license">License</h2>
-<p><a href="https://github.com/cedx/reverse-proxy.js">Reverse-Proxy.js</a> is distributed under the Apache License, version 2.0.</p>
+<h2 id="license">License</h2><p><a href="https://github.com/cedx/reverse-proxy.js">Reverse-Proxy.js</a> is distributed under the Apache License, version 2.0.</p>
 </div>
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>
