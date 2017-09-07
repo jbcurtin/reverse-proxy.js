@@ -8,7 +8,7 @@
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
   <script src="script/manual.js"></script>
-<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
+<meta name="description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
@@ -31,6 +31,7 @@
     
   <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EventEmitter">EventEmitter</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -99,253 +100,205 @@
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber53"><p>should initialize the <code>servers</code> property from the JSON configuration</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber52"><p>should initialize the <code>servers</code> property from the JSON configuration</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber61"><p>should initialize the <code>servers</code> property from the YAML configuration</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber59"><p>should initialize the <code>servers</code> property from the YAML configuration</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/application_test.js.html#lineNumber73"><p>#_parseConfig()</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/application_test.js.html#lineNumber70"><p>#_parseConfig()</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span>Application#_parseConfig</span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber74"><p>should throw an error if the configuration has an invalid format</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber71"><p>should throw an error if the configuration has an invalid format</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber81"><p>should throw an error if the parsed JSON configuration has no <code>routes</code> and no <code>target</code> properties</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber82"><p>should throw an error if the parsed JSON configuration has no <code>routes</code> and no <code>target</code> properties</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber88"><p>should throw an error if the parsed YAML configuration has no <code>routes</code> and no <code>target</code> properties</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber93"><p>should throw an error if the parsed YAML configuration has no <code>routes</code> and no <code>target</code> properties</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber95"><p>should completes with an array if the parsed JSON configuration is valid</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber104"><p>should completes with an array if the parsed JSON configuration is valid</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber103"><p>should completes with an array if the parsed YAML configuration is valid</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber111"><p>should completes with an array if the parsed YAML configuration is valid</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber111"><p>should handle the loading of certificate files</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/application_test.js.html#lineNumber118"><p>should handle the loading of certificate files</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="0">
-  <td data-ice="testDescription" style="padding-left: 10px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber11"><p>Server</p>
+  <td data-ice="testDescription" style="padding-left: 10px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber10"><p>Server</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html">Server</a></span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber16"><p>#address</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber15"><p>#address</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-address">Server#address</a></span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber17"><p>should have an &quot;any IPv4&quot; address as the default address</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber16"><p>should have an &quot;any IPv4&quot; address as the default address</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber21"><p>should have the same host as the specified one</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber20"><p>should have the same host as the specified one</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber29"><p>#listening</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber28"><p>#listening</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-listening">Server#listening</a></span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber30"><p>should return whether the server is listening</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber29"><p>should return whether the server is listening</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber45"><p>#onClose</p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-onClose">Server#onClose</a></span></td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber46"><p>should return an <code>Observable</code> instead of the underlying <code>Subject</code></p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target">-</td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber56"><p>#onError</p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-onError">Server#onError</a></span></td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber57"><p>should return an <code>Observable</code> instead of the underlying <code>Subject</code></p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target">-</td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber67"><p>#onListening</p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-onListening">Server#onListening</a></span></td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber68"><p>should return an <code>Observable</code> instead of the underlying <code>Subject</code></p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target">-</td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber78"><p>#onRequest</p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-onRequest">Server#onRequest</a></span></td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber79"><p>should return an <code>Observable</code> instead of the underlying <code>Subject</code></p>
-</a></span></td>
-  <td data-ice="testTarget" class="test-target">-</td>
-</tr>
-
-<tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber89"><p>#port</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber44"><p>#port</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-get-port">Server#port</a></span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber90"><p>should have 3000 as the default port</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber45"><p>should have 3000 as the default port</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber94"><p>should have the same port as the specified one</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber49"><p>should have the same port as the specified one</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber102"><p>#routes</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber57"><p>#routes</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span><a href="class/lib/server.js~Server.html#instance-member-routes">Server#routes</a></span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber103"><p>should be empty by default</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber58"><p>should be empty by default</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber107"><p>should create a default route if a target is specified</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber62"><p>should create a default route if a target is specified</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber113"><p>should normalize the specified targets</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber68"><p>should normalize the specified targets</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber123"><p>#_getHostname()</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber78"><p>#_getHostname()</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span>Server#_getHostname</span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber124"><p>it should return &quot;*&quot; if there is no &quot;Host&quot; header in the request</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber79"><p>it should return &quot;*&quot; if there is no &quot;Host&quot; header in the request</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber128"><p>it should return the &quot;Host&quot; header found in the request, without the port number</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber83"><p>it should return the &quot;Host&quot; header found in the request, without the port number</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber136"><p>#_normalizeRoute()</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber91"><p>#_normalizeRoute()</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span>Server#_normalizeRoute</span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber137"><p>it should normalize a port on the local host</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber92"><p>it should normalize a port on the local host</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber142"><p>it should normalize an authority</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber97"><p>it should normalize an authority</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber147"><p>it should normalize an origin</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber102"><p>it should normalize an origin</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber152"><p>it should normalize the HTTP headers</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber107"><p>it should normalize the HTTP headers</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber158"><p>it should throw an error if the route has an invalid format</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber113"><p>it should throw an error if the route has an invalid format</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="1">
-  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber166"><p>#_sendStatus()</p>
+  <td data-ice="testDescription" style="padding-left: 20px"><span data-ice="testInterfaceToggle" class="toggle closed"></span><span><a href="test-file/test/server_test.js.html#lineNumber121"><p>#_sendStatus()</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target"><span>Server#_sendStatus</span></td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber178"><p>it should set the response status</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber133"><p>it should set the response status</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
 
 <tr class="test-interface" data-ice="testInterface" style="display: none;" data-test-depth="2">
-  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber185"><p>it should set the response body</p>
+  <td data-ice="testDescription" style="padding-left: 30px"><span><a href="test-file/test/server_test.js.html#lineNumber140"><p>it should set the response body</p>
 </a></span></td>
   <td data-ice="testTarget" class="test-target">-</td>
 </tr>
@@ -354,7 +307,7 @@
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>

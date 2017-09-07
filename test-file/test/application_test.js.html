@@ -8,7 +8,7 @@
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
   <script src="script/manual.js"></script>
-<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
+<meta name="description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
@@ -31,6 +31,7 @@
     
   <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EventEmitter">EventEmitter</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -80,28 +81,25 @@ describe(&apos;Application&apos;, () =&gt; {
    * @test {Application#init}
    */
   describe(&apos;#init()&apos;, () =&gt; {
-    it(&apos;should initialize the `servers` property from the command line arguments&apos;, done =&gt; {
+    it(&apos;should initialize the `servers` property from the command line arguments&apos;, async () =&gt; {
       let app = new Application;
-      app.init({port: 80, target: 3000}).subscribe(() =&gt; {
-        expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(app.servers[0].port).to.equal(80);
-      }, done, done);
+      await app.init({port: 80, target: 3000});
+      expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(app.servers[0].port).to.equal(80);
     });
 
-    it(&apos;should initialize the `servers` property from the JSON configuration&apos;, done =&gt; {
+    it(&apos;should initialize the `servers` property from the JSON configuration&apos;, async () =&gt; {
       let app = new Application;
-      app.init({config: &apos;example/json/basic_standalone.json&apos;}).subscribe(() =&gt; {
-        expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(app.servers[0].port).to.equal(80);
-      }, done, done);
+      await app.init({config: &apos;example/json/basic_standalone.json&apos;});
+      expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(app.servers[0].port).to.equal(80);
     });
 
-    it(&apos;should initialize the `servers` property from the YAML configuration&apos;, done =&gt; {
+    it(&apos;should initialize the `servers` property from the YAML configuration&apos;, async () =&gt; {
       let app = new Application;
-      app.init({config: &apos;example/yaml/basic_standalone.yaml&apos;}).subscribe(() =&gt; {
-        expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(app.servers[0].port).to.equal(80);
-      }, done, done);
+      await app.init({config: &apos;example/yaml/basic_standalone.yaml&apos;});
+      expect(app.servers).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(app.servers[0].port).to.equal(80);
     });
   });
 
@@ -109,44 +107,54 @@ describe(&apos;Application&apos;, () =&gt; {
    * @test {Application#_parseConfig}
    */
   describe(&apos;#_parseConfig()&apos;, () =&gt; {
-    it(&apos;should throw an error if the configuration has an invalid format&apos;, done =&gt; {
-      (new Application)._parseConfig(&apos;&quot;FooBar&quot;&apos;).subscribe({
-        complete: () =&gt; done(new Error(&apos;Error not thrown.&apos;)),
-        error: () =&gt; done()
-      });
+    it(&apos;should throw an error if the configuration has an invalid format&apos;, async () =&gt; {
+      try {
+        await (new Application)._parseConfig(&apos;&quot;FooBar&quot;&apos;);
+        expect(true).to.not.be.ok;
+      }
+
+      catch (err) {
+        expect(true).to.be.ok;
+      }
     });
 
-    it(&apos;should throw an error if the parsed JSON configuration has no `routes` and no `target` properties&apos;, done =&gt; {
-      (new Application)._parseConfig(&apos;{&quot;port&quot;: 80}&apos;).subscribe({
-        complete: () =&gt; done(new Error(&apos;Error not thrown.&apos;)),
-        error: () =&gt; done()
-      });
+    it(&apos;should throw an error if the parsed JSON configuration has no `routes` and no `target` properties&apos;, async () =&gt; {
+      try {
+        await (new Application)._parseConfig(&apos;{&quot;port&quot;: 80}&apos;);
+        expect(true).to.not.be.ok;
+      }
+
+      catch (err) {
+        expect(true).to.be.ok;
+      }
     });
 
-    it(&apos;should throw an error if the parsed YAML configuration has no `routes` and no `target` properties&apos;, done =&gt; {
-      (new Application)._parseConfig(&apos;port: 80&apos;).subscribe({
-        complete: () =&gt; done(new Error(&apos;Error not thrown.&apos;)),
-        error: () =&gt; done()
-      });
+    it(&apos;should throw an error if the parsed YAML configuration has no `routes` and no `target` properties&apos;, async () =&gt; {
+      try {
+        await (new Application)._parseConfig(&apos;port: 80&apos;);
+        expect(true).to.not.be.ok;
+      }
+
+      catch (err) {
+        expect(true).to.be.ok;
+      }
     });
 
-    it(&apos;should completes with an array if the parsed JSON configuration is valid&apos;, done =&gt; {
-      (new Application)._parseConfig(&apos;{&quot;port&quot;: 80, &quot;target&quot;: 3000}&apos;).subscribe(config =&gt; {
-        expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(config[0]).to.be.instanceof(Server);
-        expect(config[0].port).to.equal(80);
-      }, done, done);
+    it(&apos;should completes with an array if the parsed JSON configuration is valid&apos;, async () =&gt; {
+      let config = await (new Application)._parseConfig(&apos;{&quot;port&quot;: 80, &quot;target&quot;: 3000}&apos;);
+      expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(config[0]).to.be.instanceof(Server);
+      expect(config[0].port).to.equal(80);
     });
 
-    it(&apos;should completes with an array if the parsed YAML configuration is valid&apos;, done =&gt; {
-      (new Application)._parseConfig(&apos;port: 80\ntarget: 3000&apos;).subscribe(config =&gt; {
-        expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(config[0]).to.be.instanceof(Server);
-        expect(config[0].port).to.equal(80);
-      }, done, done);
+    it(&apos;should completes with an array if the parsed YAML configuration is valid&apos;, async () =&gt; {
+      let config = await (new Application)._parseConfig(&apos;port: 80\ntarget: 3000&apos;);
+      expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(config[0]).to.be.instanceof(Server);
+      expect(config[0].port).to.equal(80);
     });
 
-    it(&apos;should handle the loading of certificate files&apos;, done =&gt; {
+    it(&apos;should handle the loading of certificate files&apos;, async () =&gt; {
       let settings = `{
         &quot;target&quot;: 3000,
         &quot;ssl&quot;: {
@@ -155,18 +163,17 @@ describe(&apos;Application&apos;, () =&gt; {
         }
       }`;
 
-      (new Application)._parseConfig(settings).subscribe(config =&gt; {
-        expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
-        expect(config[0]).to.be.instanceof(Server);
+      let config = await (new Application)._parseConfig(settings);
+      expect(config).to.be.an(&apos;array&apos;).and.have.lengthOf(1);
+      expect(config[0]).to.be.instanceof(Server);
 
-        let cert = config[0]._options.ssl.cert;
-        expect(cert).to.be.instanceof(Buffer);
-        expect(cert.toString()).to.contain(&apos;-----BEGIN CERTIFICATE-----&apos;);
+      let cert = config[0]._options.ssl.cert;
+      expect(cert).to.be.instanceof(Buffer);
+      expect(cert.toString()).to.contain(&apos;-----BEGIN CERTIFICATE-----&apos;);
 
-        let key = config[0]._options.ssl.key;
-        expect(key).to.be.instanceof(Buffer);
-        expect(key.toString()).to.contain(&apos;-----BEGIN ENCRYPTED PRIVATE KEY-----&apos;);
-      }, done, done);
+      let key = config[0]._options.ssl.key;
+      expect(key).to.be.instanceof(Buffer);
+      expect(key.toString()).to.contain(&apos;-----BEGIN ENCRYPTED PRIVATE KEY-----&apos;);
     });
   });
 });
@@ -175,7 +182,7 @@ describe(&apos;Application&apos;, () =&gt; {
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>

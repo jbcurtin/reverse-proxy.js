@@ -6,6 +6,12 @@ window.esdocSearchIndex = [
     "class"
   ],
   [
+    "@cedx/reverse-proxy/lib/server.js~eventemitter",
+    "variable/index.html#static-variable-EventEmitter",
+    "<span>EventEmitter</span> <span class=\"search-result-import-path\">@cedx/reverse-proxy/lib/server.js</span>",
+    "variable"
+  ],
+  [
     "@cedx/reverse-proxy/lib/server.js~server",
     "class/lib/server.js~Server.html",
     "<span>Server</span> <span class=\"search-result-import-path\">@cedx/reverse-proxy/lib/server.js</span>",
@@ -19,43 +25,43 @@ window.esdocSearchIndex = [
   ],
   [
     "application#_parseconfig application#_parseconfig,application#_parseconfig",
-    "test-file/test/application_test.js.html#lineNumber73",
+    "test-file/test/application_test.js.html#lineNumber70",
     "Application #_parseConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber95",
+    "test-file/test/application_test.js.html#lineNumber104",
     "Application #_parseConfig() should completes with an array if the parsed JSON configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber103",
+    "test-file/test/application_test.js.html#lineNumber111",
     "Application #_parseConfig() should completes with an array if the parsed YAML configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber111",
+    "test-file/test/application_test.js.html#lineNumber118",
     "Application #_parseConfig() should handle the loading of certificate files",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber74",
+    "test-file/test/application_test.js.html#lineNumber71",
     "Application #_parseConfig() should throw an error if the configuration has an invalid format",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber81",
+    "test-file/test/application_test.js.html#lineNumber82",
     "Application #_parseConfig() should throw an error if the parsed JSON configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber88",
+    "test-file/test/application_test.js.html#lineNumber93",
     "Application #_parseConfig() should throw an error if the parsed YAML configuration has no `routes` and no `target` properties",
     "test"
   ],
@@ -103,13 +109,13 @@ window.esdocSearchIndex = [
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber53",
+    "test-file/test/application_test.js.html#lineNumber52",
     "Application #init() should initialize the `servers` property from the JSON configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber61",
+    "test-file/test/application_test.js.html#lineNumber59",
     "Application #init() should initialize the `servers` property from the YAML configuration",
     "test"
   ],
@@ -121,199 +127,151 @@ window.esdocSearchIndex = [
   ],
   [
     "server lib/server.js~server,server",
-    "test-file/test/server_test.js.html#lineNumber11",
+    "test-file/test/server_test.js.html#lineNumber10",
     "Server",
     "test"
   ],
   [
     "server#_gethostname server#_gethostname,server#_gethostname",
-    "test-file/test/server_test.js.html#lineNumber123",
+    "test-file/test/server_test.js.html#lineNumber78",
     "Server #_getHostname()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber124",
+    "test-file/test/server_test.js.html#lineNumber79",
     "Server #_getHostname() it should return \"*\" if there is no \"Host\" header in the request",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber128",
+    "test-file/test/server_test.js.html#lineNumber83",
     "Server #_getHostname() it should return the \"Host\" header found in the request, without the port number",
     "test"
   ],
   [
     "server#_normalizeroute server#_normalizeroute,server#_normalizeroute",
-    "test-file/test/server_test.js.html#lineNumber136",
+    "test-file/test/server_test.js.html#lineNumber91",
     "Server #_normalizeRoute()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber137",
+    "test-file/test/server_test.js.html#lineNumber92",
     "Server #_normalizeRoute() it should normalize a port on the local host",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber142",
+    "test-file/test/server_test.js.html#lineNumber97",
     "Server #_normalizeRoute() it should normalize an authority",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber147",
+    "test-file/test/server_test.js.html#lineNumber102",
     "Server #_normalizeRoute() it should normalize an origin",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber152",
+    "test-file/test/server_test.js.html#lineNumber107",
     "Server #_normalizeRoute() it should normalize the HTTP headers",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber158",
+    "test-file/test/server_test.js.html#lineNumber113",
     "Server #_normalizeRoute() it should throw an error if the route has an invalid format",
     "test"
   ],
   [
     "server#_sendstatus server#_sendstatus,server#_sendstatus",
-    "test-file/test/server_test.js.html#lineNumber166",
+    "test-file/test/server_test.js.html#lineNumber121",
     "Server #_sendStatus()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber185",
+    "test-file/test/server_test.js.html#lineNumber140",
     "Server #_sendStatus() it should set the response body",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber178",
+    "test-file/test/server_test.js.html#lineNumber133",
     "Server #_sendStatus() it should set the response status",
     "test"
   ],
   [
     "server#address lib/server.js~server#address,server#address",
-    "test-file/test/server_test.js.html#lineNumber16",
+    "test-file/test/server_test.js.html#lineNumber15",
     "Server #address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber17",
+    "test-file/test/server_test.js.html#lineNumber16",
     "Server #address should have an \"any IPv4\" address as the default address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber21",
+    "test-file/test/server_test.js.html#lineNumber20",
     "Server #address should have the same host as the specified one",
     "test"
   ],
   [
     "server#listening lib/server.js~server#listening,server#listening",
-    "test-file/test/server_test.js.html#lineNumber29",
+    "test-file/test/server_test.js.html#lineNumber28",
     "Server #listening",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber30",
+    "test-file/test/server_test.js.html#lineNumber29",
     "Server #listening should return whether the server is listening",
     "test"
   ],
   [
-    "server#onclose lib/server.js~server#onclose,server#onclose",
-    "test-file/test/server_test.js.html#lineNumber45",
-    "Server #onClose",
-    "test"
-  ],
-  [
-    "",
-    "test-file/test/server_test.js.html#lineNumber46",
-    "Server #onClose should return an `Observable` instead of the underlying `Subject`",
-    "test"
-  ],
-  [
-    "server#onerror lib/server.js~server#onerror,server#onerror",
-    "test-file/test/server_test.js.html#lineNumber56",
-    "Server #onError",
-    "test"
-  ],
-  [
-    "",
-    "test-file/test/server_test.js.html#lineNumber57",
-    "Server #onError should return an `Observable` instead of the underlying `Subject`",
-    "test"
-  ],
-  [
-    "server#onlistening lib/server.js~server#onlistening,server#onlistening",
-    "test-file/test/server_test.js.html#lineNumber67",
-    "Server #onListening",
-    "test"
-  ],
-  [
-    "",
-    "test-file/test/server_test.js.html#lineNumber68",
-    "Server #onListening should return an `Observable` instead of the underlying `Subject`",
-    "test"
-  ],
-  [
-    "server#onrequest lib/server.js~server#onrequest,server#onrequest",
-    "test-file/test/server_test.js.html#lineNumber78",
-    "Server #onRequest",
-    "test"
-  ],
-  [
-    "",
-    "test-file/test/server_test.js.html#lineNumber79",
-    "Server #onRequest should return an `Observable` instead of the underlying `Subject`",
-    "test"
-  ],
-  [
     "server#port lib/server.js~server#port,server#port",
-    "test-file/test/server_test.js.html#lineNumber89",
+    "test-file/test/server_test.js.html#lineNumber44",
     "Server #port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber90",
+    "test-file/test/server_test.js.html#lineNumber45",
     "Server #port should have 3000 as the default port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber94",
+    "test-file/test/server_test.js.html#lineNumber49",
     "Server #port should have the same port as the specified one",
     "test"
   ],
   [
     "server#routes lib/server.js~server#routes,server#routes",
-    "test-file/test/server_test.js.html#lineNumber102",
+    "test-file/test/server_test.js.html#lineNumber57",
     "Server #routes",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber103",
+    "test-file/test/server_test.js.html#lineNumber58",
     "Server #routes should be empty by default",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber107",
+    "test-file/test/server_test.js.html#lineNumber62",
     "Server #routes should create a default route if a target is specified",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber113",
+    "test-file/test/server_test.js.html#lineNumber68",
     "Server #routes should normalize the specified targets",
     "test"
   ],
@@ -606,6 +564,12 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "lib/application.js~application#[symbol.tostringtag]",
+    "class/lib/application.js~Application.html#instance-get-[Symbol.toStringTag]",
+    "lib/application.js~Application#[Symbol.toStringTag]",
+    "member"
+  ],
+  [
     "lib/application.js~application#constructor",
     "class/lib/application.js~Application.html#instance-constructor-constructor",
     "lib/application.js~Application#constructor",
@@ -654,6 +618,12 @@ window.esdocSearchIndex = [
     "file"
   ],
   [
+    "lib/server.js~server#[symbol.tostringtag]",
+    "class/lib/server.js~Server.html#instance-get-[Symbol.toStringTag]",
+    "lib/server.js~Server#[Symbol.toStringTag]",
+    "member"
+  ],
+  [
     "lib/server.js~server#address",
     "class/lib/server.js~Server.html#instance-get-address",
     "lib/server.js~Server#address",
@@ -681,30 +651,6 @@ window.esdocSearchIndex = [
     "lib/server.js~server#listening",
     "class/lib/server.js~Server.html#instance-get-listening",
     "lib/server.js~Server#listening",
-    "member"
-  ],
-  [
-    "lib/server.js~server#onclose",
-    "class/lib/server.js~Server.html#instance-get-onClose",
-    "lib/server.js~Server#onClose",
-    "member"
-  ],
-  [
-    "lib/server.js~server#onerror",
-    "class/lib/server.js~Server.html#instance-get-onError",
-    "lib/server.js~Server#onError",
-    "member"
-  ],
-  [
-    "lib/server.js~server#onlistening",
-    "class/lib/server.js~Server.html#instance-get-onListening",
-    "lib/server.js~Server#onListening",
-    "member"
-  ],
-  [
-    "lib/server.js~server#onrequest",
-    "class/lib/server.js~Server.html#instance-get-onRequest",
-    "lib/server.js~Server#onRequest",
     "member"
   ],
   [

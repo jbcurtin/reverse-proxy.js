@@ -8,7 +8,7 @@
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
   <script src="script/manual.js"></script>
-<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
+<meta name="description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
@@ -31,6 +31,7 @@
     
   <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EventEmitter">EventEmitter</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -38,15 +39,16 @@
 <div class="content" data-ice="content"><h1 data-ice="title">lib/server.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
+const EventEmitter = require(&apos;events&apos;);
 const {createServer, STATUS_CODES} = require(&apos;http&apos;);
 const {createServer: createSecureServer} = require(&apos;https&apos;);
 const {createProxyServer} = require(&apos;http-proxy&apos;);
-const {Observable, Subject} = require(&apos;rxjs&apos;);
+const {promisify} = require(&apos;util&apos;);
 
 /**
  * Acts as an intermediary for requests from clients seeking resources from other servers.
  */
-exports.Server = class Server {
+exports.Server = class Server extends EventEmitter {
 
   /**
    * The default address that the server is listening on.
@@ -69,13 +71,14 @@ exports.Server = class Server {
    * @param {object} [options] An object specifying the server settings.
    */
   constructor(options = {}) {
+    super();
 
     /**
      * The routing table.
      * @type {Map}
      */
     this.routes = new Map;
-    if (&apos;routes&apos; in options) for (let host in options.routes) this.routes.set(host, this._normalizeRoute(options.routes[host]));
+    if (&apos;routes&apos; in options) for (let [host, route] of Object.entries(options.routes)) this.routes.set(host, this._normalizeRoute(route));
     if (&apos;target&apos; in options) this.routes.set(&apos;*&apos;, this._normalizeRoute(options.target));
 
     /**
@@ -83,30 +86,6 @@ exports.Server = class Server {
      * @type {http~Server|https~Server}
      */
     this._httpService = null;
-
-    /**
-     * The handler of &quot;close&quot; events.
-     * @type {Subject}
-     */
-    this._onClose = new Subject();
-
-    /**
-     * The handler of &quot;error&quot; events.
-     * @type {Subject&lt;Error&gt;}
-     */
-    this._onError = new Subject();
-
-    /**
-     * The handler of &quot;listening&quot; events.
-     * @type {Subject}
-     */
-    this._onListening = new Subject();
-
-    /**
-     * The handler of &quot;request&quot; events.
-     * @type {Subject&lt;object&gt;}
-     */
-    this._onRequest = new Subject();
 
     /**
      * The server settings.
@@ -127,6 +106,14 @@ exports.Server = class Server {
   }
 
   /**
+   * The class name.
+   * @type {string}
+   */
+  get [Symbol.toStringTag]() {
+    return &apos;Server&apos;;
+  }
+
+  /**
    * The address that the server is listening on.
    * @type {string}
    */
@@ -143,38 +130,6 @@ exports.Server = class Server {
   }
 
   /**
-   * The stream of &quot;close&quot; events.
-   * @type {Observable}
-   */
-  get onClose() {
-    return this._onClose.asObservable();
-  }
-
-  /**
-   * The stream of &quot;error&quot; events.
-   * @type {Observable&lt;Error&gt;}
-   */
-  get onError() {
-    return this._onError.asObservable();
-  }
-
-  /**
-   * The stream of &quot;listening&quot; events.
-   * @type {Observable}
-   */
-  get onListening() {
-    return this._onListening.asObservable();
-  }
-
-  /**
-   * The stream of &quot;request&quot; events.
-   * @type {Observable&lt;object&gt;}
-   */
-  get onRequest() {
-    return this._onRequest.asObservable();
-  }
-
-  /**
    * The port that the server is listening on.
    * @type {number}
    */
@@ -184,43 +139,42 @@ exports.Server = class Server {
 
   /**
    * Stops the server from accepting new connections. It does nothing if the server is already closed.
-   * @return {Observable} Completes when the server is finally closed.
    * @emits {*} The &quot;close&quot; event.
    */
-  close() {
-    if (!this.listening) return Observable.of(null);
+  async close() {
+    if (!this.listening) return;
 
-    const close = Observable.bindCallback(this._httpService.close.bind(this._httpService));
-    return close().do(() =&gt; {
-      this._httpService = null;
-      this._proxyService = null;
-      this._onClose.next();
-    });
+    const close = promisify(this._httpService.close.bind(this._httpService));
+    await close();
+
+    this._httpService = null;
+    this._proxyService = null;
+    this.emit(&apos;close&apos;);
   }
 
   /**
    * Begin accepting connections. It does nothing if the server is already started.
    * @param {number} [port] The port that the server should run on.
    * @param {string} [address] The address that the server should run on.
-   * @return {Observable&lt;number&gt;} The port that the server is running on.
+   * @return {Promise&lt;number&gt;} The port that the server is running on.
    * @emits {*} The &quot;listening&quot; event.
    */
-  listen(port = this.port, address = this.address) {
-    if (this.listening) return Observable.of(this.port);
+  async listen(port = this.port, address = this.address) {
+    if (this.listening) return this.port;
 
     let requestHandler = this._onHTTPRequest.bind(this);
     this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);
-    this._httpService.on(&apos;error&apos;, error =&gt; this._onError.next(error));
+    this._httpService.on(&apos;error&apos;, error =&gt; this.emit(&apos;error&apos;, error));
     this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
 
     this._proxyService = createProxyServer(this._options.proxy);
     this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
 
-    const listen = Observable.bindCallback(this._httpService.listen.bind(this._httpService));
-    return listen(port, address).map(() =&gt; {
-      this._onListening.next();
-      return this.port;
-    });
+    const listen = promisify(this._httpService.listen.bind(this._httpService));
+    await listen(port, address);
+
+    this.emit(&apos;listening&apos;);
+    return this.port;
   }
 
   /**
@@ -243,39 +197,39 @@ exports.Server = class Server {
    * @throws {Error} The route has an invalid format.
    */
   _normalizeRoute(route) {
-    let value = typeof route == &apos;object&apos; &amp;&amp; route ? route : {uri: route};
+    if (typeof route != &apos;object&apos; || !route) route = {uri: route};
 
-    switch (typeof value.uri) {
+    switch (typeof route.uri) {
       case &apos;number&apos;:
-        value.uri = `http://127.0.0.1:${value.uri}`;
+        route.uri = `http://127.0.0.1:${route.uri}`;
         break;
 
       case &apos;string&apos;:
-        if (!/^https?:/i.test(value.uri)) value.uri = `http://${value.uri}`;
+        if (!/^https?:/i.test(route.uri)) route.uri = `http://${route.uri}`;
         break;
 
       default:
         throw new Error(&apos;The route has an invalid format.&apos;);
     }
 
-    if (typeof value.headers != &apos;object&apos; || !value.headers) value.headers = {};
+    if (typeof route.headers != &apos;object&apos; || !route.headers) route.headers = {};
     else {
       let map = {};
-      for (let key in value.headers) map[key.toLowerCase()] = value.headers[key];
-      value.headers = map;
+      for (let [key, value] of Object.entries(route.headers)) map[key.toLowerCase()] = value;
+      route.headers = map;
     }
 
-    return value;
+    return route;
   }
 
   /**
    * Handles an HTTP request to a target.
    * @param {http~IncomingMessage} request The request sent by the client.
    * @param {http~ServerResponse} response The response sent by the server.
-   * @emits {object} The &quot;request&quot; event.
+   * @emits {http~IncomingMessage} The &quot;request&quot; event.
    */
   _onHTTPRequest(request, response) {
-    this._onRequest.next({request, response});
+    this.emit(&apos;request&apos;, request, response);
 
     let hostname = this._getHostname(request);
     let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
@@ -295,7 +249,7 @@ exports.Server = class Server {
    * @emits {Error} The &quot;error&quot; event.
    */
   _onRequestError(error, request, response) {
-    this._onError.next(error);
+    this.emit(&apos;error&apos;, error);
     this._sendStatus(response, 502);
   }
 
@@ -335,7 +289,7 @@ exports.Server = class Server {
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>

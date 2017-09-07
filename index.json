@@ -567,7 +567,7 @@
     "__docId__": 48,
     "kind": "file",
     "name": "lib/application.js",
-    "content": "'use strict';\r\n\r\nconst program = require('commander');\r\nconst {readFile} = require('fs');\r\nconst {safeLoadAll: loadYAML} = require('js-yaml');\r\nconst morgan = require('morgan');\r\nconst {Observable} = require('rxjs');\r\n\r\nconst {version: pkgVersion} = require('../package.json');\r\nconst {Server} = require('./server');\r\n\r\n/**\r\n * Represents an application providing functionalities specific to console requests.\r\n */\r\nexports.Application = class Application {\r\n\r\n  /**\r\n   * The format used for logging the requests.\r\n   * @type {string}\r\n   */\r\n  static get LOG_FORMAT() {\r\n    return ':req[host] :remote-addr - :remote-user [:date[clf]] \":method :url HTTP/:http-version\" :status :res[content-length] \":referrer\" \":user-agent\"';\r\n  }\r\n\r\n  /**\r\n   * Initializes a new instance of the class.\r\n   */\r\n  constructor() {\r\n\r\n    /**\r\n     * The proxy servers managed by this application.\r\n     * @type {Server[]}\r\n     */\r\n    this.servers = [];\r\n  }\r\n\r\n  /**\r\n   * Value indicating whether the application runs in debug mode.\r\n   * @type {boolean}\r\n   */\r\n  get debug() {\r\n    return ['development', 'test'].includes(this.env);\r\n  }\r\n\r\n  /**\r\n   * The application environment.\r\n   * @type {string}\r\n   */\r\n  get env() {\r\n    return 'NODE_ENV' in process.env ? process.env.NODE_ENV : 'development';\r\n  }\r\n\r\n  /**\r\n   * Initializes the application.\r\n   * @param {object} [args] The command line arguments.\r\n   * @return {Observable} Completes when the initialization is over.\r\n   */\r\n  init(args = {}) {\r\n    let observable;\r\n    if (typeof args.config == 'string') {\r\n      const loadConfig = Observable.bindNodeCallback(readFile);\r\n      observable = loadConfig(args.config, 'utf8').mergeMap(data => this._parseConfig(data));\r\n    }\r\n    else observable = Observable.of([new Server({\r\n      address: args.address,\r\n      port: args.port,\r\n      target: args.target\r\n    })]);\r\n\r\n    return observable.map(servers => this.servers = servers);\r\n  }\r\n\r\n  /**\r\n   * Runs the application.\r\n   * @return {Observable} Completes when the reverse proxy has been started.\r\n   */\r\n  run() {\r\n    // Parse the command line arguments.\r\n    const format = {\r\n      asInteger: value => Number.parseInt(value, 10),\r\n      asIntegerIfNumeric: value => /^\\d+$/.test(value) ? Number.parseInt(value, 10) : value\r\n    };\r\n\r\n    program.name('reverse-proxy')\r\n      .description('Simple reverse proxy server supporting WebSockets.')\r\n      .version(pkgVersion, '-v, --version')\r\n      .option('-a, --address <address>', `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)\r\n      .option('-p, --port <port>', `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)\r\n      .option('-t, --target <target>', 'location of the server the proxy will target', format.asIntegerIfNumeric)\r\n      .option('-c, --config <path>', 'location of the configuration file for the reverse proxy')\r\n      .option('-u, --user <user>', 'user to drop privileges to once server socket is bound', format.asIntegerIfNumeric)\r\n      .option('--silent', 'silence the log output from the reverse proxy')\r\n      .parse(process.argv);\r\n\r\n    if (!program.config && !program.target) program.help();\r\n\r\n    // Start the proxy server.\r\n    return this.init(program)\r\n      .mergeMap(() => {\r\n        if (!this.servers.length) return Observable.throw(new Error('Unable to find any configuration for the reverse proxy.'));\r\n        return this._startServers();\r\n      })\r\n      .do({complete: () => {\r\n        if (program.user) this._setUser(program.user);\r\n      }});\r\n  }\r\n\r\n  /**\r\n   * Parses the specified configuration.\r\n   * @param {string} data A string specifying the application configuration.\r\n   * @return {Observable<Server[]>} The server instances corresponding to the parsed configuration.\r\n   */\r\n  _parseConfig(data) {\r\n    data = data.trim();\r\n    if (!data.length) return Observable.throw(new Error('Invalid configuration data.'));\r\n\r\n    /* eslint-disable no-extra-parens */\r\n    let config;\r\n    let firstChar = data[0];\r\n    let lastChar = data[data.length - 1];\r\n    let isJson = (firstChar == '[' && lastChar == ']') || (firstChar == '{' && lastChar == '}');\r\n    /* eslint-enable no-extra-parens */\r\n\r\n    try {\r\n      if (!isJson) {\r\n        config = [];\r\n        loadYAML(data, options => config.push(options));\r\n      }\r\n      else {\r\n        config = JSON.parse(data);\r\n        if (!Array.isArray(config)) config = [config];\r\n      }\r\n\r\n      if (!config.every(value => typeof value == 'object' && value))\r\n        throw new Error('Invalid configuration format.');\r\n    }\r\n\r\n    catch (err) {\r\n      return Observable.throw(err);\r\n    }\r\n\r\n    const loadCert = Observable.bindNodeCallback(readFile);\r\n    return Observable.from(config).mergeMap(options => {\r\n      if (!('routes' in options) && !('target' in options))\r\n        return Observable.throw(new Error('You must provide at least a target or a routing table.'));\r\n\r\n      if (!('address' in options)) options.address = program.address;\r\n      if (!('port' in options)) options.port = program.port;\r\n      if (!('ssl' in options)) return Observable.of(new Server(options));\r\n\r\n      let keys = ['ca', 'cert', 'key', 'pfx'].filter(key => key in options.ssl);\r\n      let observables = keys.map(key => loadCert(options.ssl[key]));\r\n      return Observable.zip(...observables)\r\n        .do(certs => { for (let i = 0; i < keys.length; i++) options.ssl[keys[i]] = certs[i]; })\r\n        .map(() => new Server(options));\r\n    }).toArray();\r\n  }\r\n\r\n  /**\r\n   * Sets the user identity of the application process.\r\n   * @param {number|string} userId The user identifier.\r\n   */\r\n  _setUser(userId) {\r\n    if (typeof process.setuid != 'function')\r\n      console.error('Changing the process user is not supported on this platform.');\r\n    else {\r\n      console.log(`Drop user privileges to \"${userId}\"`);\r\n      process.setuid(userId);\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Starts the reverse proxy instances.\r\n   * @return {Observable} Completes when all servers have been started.\r\n   */\r\n  _startServers() {\r\n    let done = () => {};\r\n    let logger = morgan(this.debug ? 'dev' : Application.LOG_FORMAT);\r\n\r\n    return Observable.merge(...this.servers.map(server => {\r\n      server.onClose.subscribe(() => console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));\r\n      server.onError.subscribe(error => console.error(this.debug ? error : error.message));\r\n      server.onListening.subscribe(() => console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));\r\n      if (!program.silent) server.onRequest.subscribe(({request, response}) => logger(request, response, done));\r\n\r\n      return server.listen();\r\n    }));\r\n  }\r\n};\r\n",
+    "content": "'use strict';\r\n\r\nconst program = require('commander');\r\nconst {readFile} = require('fs');\r\nconst {safeLoadAll: loadYAML} = require('js-yaml');\r\nconst morgan = require('morgan');\r\nconst {promisify} = require('util');\r\nconst {version: pkgVersion} = require('../package.json');\r\nconst {Server} = require('./server');\r\n\r\n/**\r\n * Represents an application providing functionalities specific to console requests.\r\n */\r\nexports.Application = class Application {\r\n\r\n  /**\r\n   * The format used for logging the requests.\r\n   * @type {string}\r\n   */\r\n  static get LOG_FORMAT() {\r\n    return ':req[host] :remote-addr - :remote-user [:date[clf]] \":method :url HTTP/:http-version\" :status :res[content-length] \":referrer\" \":user-agent\"';\r\n  }\r\n\r\n  /**\r\n   * Initializes a new instance of the class.\r\n   */\r\n  constructor() {\r\n\r\n    /**\r\n     * The proxy servers managed by this application.\r\n     * @type {Server[]}\r\n     */\r\n    this.servers = [];\r\n  }\r\n\r\n  /**\r\n   * The class name.\r\n   * @type {string}\r\n   */\r\n  get [Symbol.toStringTag]() {\r\n    return 'Application';\r\n  }\r\n\r\n  /**\r\n   * Value indicating whether the application runs in debug mode.\r\n   * @type {boolean}\r\n   */\r\n  get debug() {\r\n    return ['development', 'test'].includes(this.env);\r\n  }\r\n\r\n  /**\r\n   * The application environment.\r\n   * @type {string}\r\n   */\r\n  get env() {\r\n    return 'NODE_ENV' in process.env ? process.env.NODE_ENV : 'development';\r\n  }\r\n\r\n  /**\r\n   * Initializes the application.\r\n   * @param {object} [args] The command line arguments.\r\n   */\r\n  async init(args = {}) {\r\n    if (typeof args.config == 'string') {\r\n      const loadConfig = promisify(readFile);\r\n      this.servers = await this._parseConfig(await loadConfig(args.config, 'utf8'));\r\n    }\r\n    else this.servers = [new Server({\r\n      address: args.address,\r\n      port: args.port,\r\n      target: args.target\r\n    })];\r\n  }\r\n\r\n  /**\r\n   * Runs the application.\r\n   */\r\n  async run() {\r\n    // Parse the command line arguments.\r\n    const format = {\r\n      asInteger: value => Number.parseInt(value, 10),\r\n      asIntegerIfNumeric: value => /^\\d+$/.test(value) ? Number.parseInt(value, 10) : value\r\n    };\r\n\r\n    program.name('reverse-proxy')\r\n      .description('Simple reverse proxy server supporting WebSockets.')\r\n      .version(pkgVersion, '-v, --version')\r\n      .option('-a, --address <address>', `address that the reverse proxy should run on [${Server.DEFAULT_ADDRESS}]`, Server.DEFAULT_ADDRESS)\r\n      .option('-p, --port <port>', `port that the reverse proxy should run on [${Server.DEFAULT_PORT}]`, format.asInteger, Server.DEFAULT_PORT)\r\n      .option('-t, --target <target>', 'location of the server the proxy will target', format.asIntegerIfNumeric)\r\n      .option('-c, --config <path>', 'location of the configuration file for the reverse proxy')\r\n      .option('-u, --user <user>', 'user to drop privileges to once server socket is bound', format.asIntegerIfNumeric)\r\n      .option('--silent', 'silence the log output from the reverse proxy')\r\n      .parse(process.argv);\r\n\r\n    if (!program.config && !program.target) program.help();\r\n\r\n    // Start the proxy server.\r\n    await this.init(program);\r\n    if (!this.servers.length) throw new Error('Unable to find any configuration for the reverse proxy.');\r\n\r\n    await this._startServers();\r\n    if (program.user) this._setUser(program.user);\r\n  }\r\n\r\n  /**\r\n   * Parses the specified configuration.\r\n   * @param {string} data A string specifying the application configuration.\r\n   * @return {Promise<Server[]>} The server instances corresponding to the parsed configuration.\r\n   */\r\n  async _parseConfig(data) {\r\n    data = data.trim();\r\n    if (!data.length) throw new Error('Invalid configuration data.');\r\n\r\n    /* eslint-disable no-extra-parens */\r\n    let config;\r\n    let firstChar = data[0];\r\n    let lastChar = data[data.length - 1];\r\n    let isJson = (firstChar == '[' && lastChar == ']') || (firstChar == '{' && lastChar == '}');\r\n    /* eslint-enable no-extra-parens */\r\n\r\n    if (!isJson) {\r\n      config = [];\r\n      loadYAML(data, options => config.push(options));\r\n    }\r\n    else {\r\n      config = JSON.parse(data);\r\n      if (!Array.isArray(config)) config = [config];\r\n    }\r\n\r\n    if (!config.every(value => typeof value == 'object' && value)) throw new Error('Invalid configuration format.');\r\n\r\n    const loadCert = promisify(readFile);\r\n    for (let options of config) {\r\n      if (!('routes' in options) && !('target' in options)) throw new Error('You must provide at least a target or a routing table.');\r\n      if (!('address' in options)) options.address = program.address;\r\n      if (!('port' in options)) options.port = program.port;\r\n\r\n      if ('ssl' in options) {\r\n        let keys = ['ca', 'cert', 'key', 'pfx'].filter(key => key in options.ssl);\r\n        for (let key of keys) options.ssl[key] = await loadCert(options.ssl[key]);\r\n      }\r\n    }\r\n\r\n    return config.map(options => new Server(options));\r\n  }\r\n\r\n  /**\r\n   * Sets the user identity of the application process.\r\n   * @param {number|string} userId The user identifier.\r\n   */\r\n  _setUser(userId) {\r\n    if (typeof process.setuid != 'function')\r\n      console.error('Changing the process user is not supported on this platform.');\r\n    else {\r\n      console.log(`Drop user privileges to \"${userId}\"`);\r\n      process.setuid(userId);\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Starts the reverse proxy instances.\r\n   * @return {Promise} Completes when all servers have been started.\r\n   */\r\n  async _startServers() {\r\n    let done = () => {};\r\n    let logger = morgan(this.debug ? 'dev' : Application.LOG_FORMAT);\r\n\r\n    return Promise.all(this.servers.map(server => {\r\n      server.on('close', () => console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));\r\n      server.on('error', err => console.error(this.debug ? err : err.message));\r\n      server.on('listening', () => console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));\r\n      if (!program.silent) server.on('request', (request, response) => logger(request, response, done));\r\n\r\n      return server.listen();\r\n    }));\r\n  }\r\n};\r\n",
     "static": true,
     "longname": "C:/repo/reverse-proxy.js/lib/application.js",
     "access": "public",
@@ -661,10 +661,10 @@
   {
     "__docId__": 53,
     "kind": "variable",
-    "name": "Observable",
+    "name": "promisify",
     "memberof": "lib/application.js",
     "static": true,
-    "longname": "lib/application.js~Observable",
+    "longname": "lib/application.js~promisify",
     "access": "public",
     "export": false,
     "importPath": "@cedx/reverse-proxy/lib/application.js",
@@ -691,7 +691,7 @@
     "importPath": "@cedx/reverse-proxy/lib/application.js",
     "importStyle": null,
     "description": null,
-    "lineNumber": 9,
+    "lineNumber": 8,
     "undocument": true,
     "type": {
       "types": [
@@ -712,7 +712,7 @@
     "importPath": "@cedx/reverse-proxy/lib/application.js",
     "importStyle": null,
     "description": null,
-    "lineNumber": 10,
+    "lineNumber": 9,
     "undocument": true,
     "type": {
       "types": [
@@ -733,7 +733,7 @@
     "importPath": "@cedx/reverse-proxy/lib/application.js",
     "importStyle": "{Application}",
     "description": "Represents an application providing functionalities specific to console requests.",
-    "lineNumber": 15,
+    "lineNumber": 14,
     "interface": false
   },
   {
@@ -747,7 +747,7 @@
     "longname": "lib/application.js~Application.LOG_FORMAT",
     "access": "public",
     "description": "The format used for logging the requests.",
-    "lineNumber": 21,
+    "lineNumber": 20,
     "type": {
       "nullable": null,
       "types": [
@@ -768,7 +768,7 @@
     "longname": "lib/application.js~Application#constructor",
     "access": "public",
     "description": "Initializes a new instance of the class.",
-    "lineNumber": 28
+    "lineNumber": 27
   },
   {
     "__docId__": 59,
@@ -779,7 +779,7 @@
     "longname": "lib/application.js~Application#servers",
     "access": "public",
     "description": "The proxy servers managed by this application.",
-    "lineNumber": 34,
+    "lineNumber": 33,
     "type": {
       "nullable": null,
       "types": [
@@ -792,36 +792,15 @@
   {
     "__docId__": 60,
     "kind": "get",
-    "name": "debug",
+    "name": "[Symbol.toStringTag]",
     "memberof": "lib/application.js~Application",
     "generator": false,
     "async": false,
     "static": false,
-    "longname": "lib/application.js~Application#debug",
+    "longname": "lib/application.js~Application#[Symbol.toStringTag]",
     "access": "public",
-    "description": "Value indicating whether the application runs in debug mode.",
-    "lineNumber": 41,
-    "type": {
-      "nullable": null,
-      "types": [
-        "boolean"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 61,
-    "kind": "get",
-    "name": "env",
-    "memberof": "lib/application.js~Application",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "lib/application.js~Application#env",
-    "access": "public",
-    "description": "The application environment.",
-    "lineNumber": 49,
+    "description": "The class name.",
+    "lineNumber": 40,
     "type": {
       "nullable": null,
       "types": [
@@ -832,17 +811,59 @@
     }
   },
   {
-    "__docId__": 62,
-    "kind": "method",
-    "name": "init",
+    "__docId__": 61,
+    "kind": "get",
+    "name": "debug",
     "memberof": "lib/application.js~Application",
     "generator": false,
     "async": false,
     "static": false,
+    "longname": "lib/application.js~Application#debug",
+    "access": "public",
+    "description": "Value indicating whether the application runs in debug mode.",
+    "lineNumber": 48,
+    "type": {
+      "nullable": null,
+      "types": [
+        "boolean"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 62,
+    "kind": "get",
+    "name": "env",
+    "memberof": "lib/application.js~Application",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "lib/application.js~Application#env",
+    "access": "public",
+    "description": "The application environment.",
+    "lineNumber": 56,
+    "type": {
+      "nullable": null,
+      "types": [
+        "string"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 63,
+    "kind": "method",
+    "name": "init",
+    "memberof": "lib/application.js~Application",
+    "generator": false,
+    "async": true,
+    "static": false,
     "longname": "lib/application.js~Application#init",
     "access": "public",
     "description": "Initializes the application.",
-    "lineNumber": 58,
+    "lineNumber": 64,
     "params": [
       {
         "nullable": null,
@@ -855,49 +876,35 @@
         "description": "The command line arguments."
       }
     ],
-    "return": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": "Completes when the initialization is over."
-    }
+    "return": null
   },
   {
-    "__docId__": 63,
+    "__docId__": 66,
     "kind": "method",
     "name": "run",
     "memberof": "lib/application.js~Application",
     "generator": false,
-    "async": false,
+    "async": true,
     "static": false,
     "longname": "lib/application.js~Application#run",
     "access": "public",
     "description": "Runs the application.",
-    "lineNumber": 77,
-    "return": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": "Completes when the reverse proxy has been started."
-    },
-    "params": []
+    "lineNumber": 79,
+    "params": [],
+    "return": null
   },
   {
-    "__docId__": 64,
+    "__docId__": 67,
     "kind": "method",
     "name": "_parseConfig",
     "memberof": "lib/application.js~Application",
     "generator": false,
-    "async": false,
+    "async": true,
     "static": false,
     "longname": "lib/application.js~Application#_parseConfig",
     "access": "private",
     "description": "Parses the specified configuration.",
-    "lineNumber": 113,
+    "lineNumber": 112,
     "params": [
       {
         "nullable": null,
@@ -913,7 +920,7 @@
     "return": {
       "nullable": null,
       "types": [
-        "Observable<Server[]>"
+        "Promise<Server[]>"
       ],
       "spread": false,
       "description": "The server instances corresponding to the parsed configuration."
@@ -921,7 +928,7 @@
     "ignore": true
   },
   {
-    "__docId__": 65,
+    "__docId__": 68,
     "kind": "method",
     "name": "_setUser",
     "memberof": "lib/application.js~Application",
@@ -931,7 +938,7 @@
     "longname": "lib/application.js~Application#_setUser",
     "access": "private",
     "description": "Sets the user identity of the application process.",
-    "lineNumber": 163,
+    "lineNumber": 153,
     "params": [
       {
         "nullable": null,
@@ -949,21 +956,21 @@
     "return": null
   },
   {
-    "__docId__": 66,
+    "__docId__": 69,
     "kind": "method",
     "name": "_startServers",
     "memberof": "lib/application.js~Application",
     "generator": false,
-    "async": false,
+    "async": true,
     "static": false,
     "longname": "lib/application.js~Application#_startServers",
     "access": "private",
     "description": "Starts the reverse proxy instances.",
-    "lineNumber": 176,
+    "lineNumber": 166,
     "return": {
       "nullable": null,
       "types": [
-        "Observable"
+        "Promise"
       ],
       "spread": false,
       "description": "Completes when all servers have been started."
@@ -972,10 +979,10 @@
     "params": []
   },
   {
-    "__docId__": 67,
+    "__docId__": 70,
     "kind": "file",
     "name": "lib/server.js",
-    "content": "'use strict';\r\n\r\nconst {createServer, STATUS_CODES} = require('http');\r\nconst {createServer: createSecureServer} = require('https');\r\nconst {createProxyServer} = require('http-proxy');\r\nconst {Observable, Subject} = require('rxjs');\r\n\r\n/**\r\n * Acts as an intermediary for requests from clients seeking resources from other servers.\r\n */\r\nexports.Server = class Server {\r\n\r\n  /**\r\n   * The default address that the server is listening on.\r\n   * @type {string}\r\n   */\r\n  static get DEFAULT_ADDRESS() {\r\n    return '0.0.0.0';\r\n  }\r\n\r\n  /**\r\n   * The default port that the server is listening on.\r\n   * @type {number}\r\n   */\r\n  static get DEFAULT_PORT() {\r\n    return 3000;\r\n  }\r\n\r\n  /**\r\n   * Initializes a new instance of the class.\r\n   * @param {object} [options] An object specifying the server settings.\r\n   */\r\n  constructor(options = {}) {\r\n\r\n    /**\r\n     * The routing table.\r\n     * @type {Map}\r\n     */\r\n    this.routes = new Map;\r\n    if ('routes' in options) for (let host in options.routes) this.routes.set(host, this._normalizeRoute(options.routes[host]));\r\n    if ('target' in options) this.routes.set('*', this._normalizeRoute(options.target));\r\n\r\n    /**\r\n     * The underlying HTTP(S) service listening for requests.\r\n     * @type {http~Server|https~Server}\r\n     */\r\n    this._httpService = null;\r\n\r\n    /**\r\n     * The handler of \"close\" events.\r\n     * @type {Subject}\r\n     */\r\n    this._onClose = new Subject();\r\n\r\n    /**\r\n     * The handler of \"error\" events.\r\n     * @type {Subject<Error>}\r\n     */\r\n    this._onError = new Subject();\r\n\r\n    /**\r\n     * The handler of \"listening\" events.\r\n     * @type {Subject}\r\n     */\r\n    this._onListening = new Subject();\r\n\r\n    /**\r\n     * The handler of \"request\" events.\r\n     * @type {Subject<object>}\r\n     */\r\n    this._onRequest = new Subject();\r\n\r\n    /**\r\n     * The server settings.\r\n     * @type {object}\r\n     */\r\n    this._options = {\r\n      address: typeof options.address == 'string' ? options.address : Server.DEFAULT_ADDRESS,\r\n      port: Number.isInteger(options.port) ? options.port : Server.DEFAULT_PORT,\r\n      proxy: typeof options.proxy == 'object' && options.proxy ? options.proxy : null,\r\n      ssl: typeof options.ssl == 'object' && options.ssl ? options.ssl : null\r\n    };\r\n\r\n    /**\r\n     * The underlying proxy service providing custom application logic.\r\n     * @type {ProxyServer}\r\n     */\r\n    this._proxyService = null;\r\n  }\r\n\r\n  /**\r\n   * The address that the server is listening on.\r\n   * @type {string}\r\n   */\r\n  get address() {\r\n    return this.listening ? this._httpService.address().address : this._options.address;\r\n  }\r\n\r\n  /**\r\n   * Value indicating whether the server is currently listening.\r\n   * @type {boolean}\r\n   */\r\n  get listening() {\r\n    return Boolean(this._httpService && this._httpService.listening);\r\n  }\r\n\r\n  /**\r\n   * The stream of \"close\" events.\r\n   * @type {Observable}\r\n   */\r\n  get onClose() {\r\n    return this._onClose.asObservable();\r\n  }\r\n\r\n  /**\r\n   * The stream of \"error\" events.\r\n   * @type {Observable<Error>}\r\n   */\r\n  get onError() {\r\n    return this._onError.asObservable();\r\n  }\r\n\r\n  /**\r\n   * The stream of \"listening\" events.\r\n   * @type {Observable}\r\n   */\r\n  get onListening() {\r\n    return this._onListening.asObservable();\r\n  }\r\n\r\n  /**\r\n   * The stream of \"request\" events.\r\n   * @type {Observable<object>}\r\n   */\r\n  get onRequest() {\r\n    return this._onRequest.asObservable();\r\n  }\r\n\r\n  /**\r\n   * The port that the server is listening on.\r\n   * @type {number}\r\n   */\r\n  get port() {\r\n    return this.listening ? this._httpService.address().port : this._options.port;\r\n  }\r\n\r\n  /**\r\n   * Stops the server from accepting new connections. It does nothing if the server is already closed.\r\n   * @return {Observable} Completes when the server is finally closed.\r\n   * @emits {*} The \"close\" event.\r\n   */\r\n  close() {\r\n    if (!this.listening) return Observable.of(null);\r\n\r\n    const close = Observable.bindCallback(this._httpService.close.bind(this._httpService));\r\n    return close().do(() => {\r\n      this._httpService = null;\r\n      this._proxyService = null;\r\n      this._onClose.next();\r\n    });\r\n  }\r\n\r\n  /**\r\n   * Begin accepting connections. It does nothing if the server is already started.\r\n   * @param {number} [port] The port that the server should run on.\r\n   * @param {string} [address] The address that the server should run on.\r\n   * @return {Observable<number>} The port that the server is running on.\r\n   * @emits {*} The \"listening\" event.\r\n   */\r\n  listen(port = this.port, address = this.address) {\r\n    if (this.listening) return Observable.of(this.port);\r\n\r\n    let requestHandler = this._onHTTPRequest.bind(this);\r\n    this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);\r\n    this._httpService.on('error', error => this._onError.next(error));\r\n    this._httpService.on('upgrade', this._onWSRequest.bind(this));\r\n\r\n    this._proxyService = createProxyServer(this._options.proxy);\r\n    this._proxyService.on('error', this._onRequestError.bind(this));\r\n\r\n    const listen = Observable.bindCallback(this._httpService.listen.bind(this._httpService));\r\n    return listen(port, address).map(() => {\r\n      this._onListening.next();\r\n      return this.port;\r\n    });\r\n  }\r\n\r\n  /**\r\n   * Gets the host name contained in the headers of the specified request.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.\r\n   */\r\n  _getHostname(request) {\r\n    let headers = request.headers;\r\n    if (!('host' in headers)) return '*';\r\n\r\n    let index = headers.host.indexOf(':');\r\n    return index < 0 ? headers.host : headers.host.substr(0, index);\r\n  }\r\n\r\n  /**\r\n   * Normalizes the specified route.\r\n   * @param {*} route The route to normalize.\r\n   * @return {object} The normalized route.\r\n   * @throws {Error} The route has an invalid format.\r\n   */\r\n  _normalizeRoute(route) {\r\n    let value = typeof route == 'object' && route ? route : {uri: route};\r\n\r\n    switch (typeof value.uri) {\r\n      case 'number':\r\n        value.uri = `http://127.0.0.1:${value.uri}`;\r\n        break;\r\n\r\n      case 'string':\r\n        if (!/^https?:/i.test(value.uri)) value.uri = `http://${value.uri}`;\r\n        break;\r\n\r\n      default:\r\n        throw new Error('The route has an invalid format.');\r\n    }\r\n\r\n    if (typeof value.headers != 'object' || !value.headers) value.headers = {};\r\n    else {\r\n      let map = {};\r\n      for (let key in value.headers) map[key.toLowerCase()] = value.headers[key];\r\n      value.headers = map;\r\n    }\r\n\r\n    return value;\r\n  }\r\n\r\n  /**\r\n   * Handles an HTTP request to a target.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {http~ServerResponse} response The response sent by the server.\r\n   * @emits {object} The \"request\" event.\r\n   */\r\n  _onHTTPRequest(request, response) {\r\n    this._onRequest.next({request, response});\r\n\r\n    let hostname = this._getHostname(request);\r\n    let pattern = this.routes.has(hostname) ? hostname : '*';\r\n    if (!this.routes.has(pattern)) this._sendStatus(response, 404);\r\n    else {\r\n      let target = this.routes.get(pattern);\r\n      Object.assign(request.headers, target.headers);\r\n      this._proxyService.web(request, response, {target: target.uri});\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Handles the error emitted if a request to a target fails.\r\n   * @param {Error} error The emitted error event.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {http~ServerResponse} response The response sent by the server.\r\n   * @emits {Error} The \"error\" event.\r\n   */\r\n  _onRequestError(error, request, response) {\r\n    this._onError.next(error);\r\n    this._sendStatus(response, 502);\r\n  }\r\n\r\n  /**\r\n   * Handles a WebSocket request to a target.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {net~Socket} socket The network socket between the server and client.\r\n   * @param {Buffer} head The first packet of the upgraded stream.\r\n   */\r\n  _onWSRequest(request, socket, head) {\r\n    let hostname = this._getHostname(request);\r\n    let pattern = this.routes.has(hostname) ? hostname : '*';\r\n    if (this.routes.has(pattern)) {\r\n      let target = this.routes.get(pattern);\r\n      Object.assign(request.headers, target.headers);\r\n      this._proxyService.ws(request, socket, head, {target: target.uri});\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Sends an HTTP status code and terminates the specified server response.\r\n   * @param {http~ServerResponse} response The server response.\r\n   * @param {number} statusCode The HTTP status code to send.\r\n   */\r\n  _sendStatus(response, statusCode) {\r\n    let message = STATUS_CODES[statusCode];\r\n    response.writeHead(statusCode, {\r\n      'Content-Length': Buffer.byteLength(message),\r\n      'Content-Type': 'text/plain; charset=utf-8'\r\n    });\r\n\r\n    response.end(message);\r\n  }\r\n};\r\n",
+    "content": "'use strict';\r\n\r\nconst EventEmitter = require('events');\r\nconst {createServer, STATUS_CODES} = require('http');\r\nconst {createServer: createSecureServer} = require('https');\r\nconst {createProxyServer} = require('http-proxy');\r\nconst {promisify} = require('util');\r\n\r\n/**\r\n * Acts as an intermediary for requests from clients seeking resources from other servers.\r\n */\r\nexports.Server = class Server extends EventEmitter {\r\n\r\n  /**\r\n   * The default address that the server is listening on.\r\n   * @type {string}\r\n   */\r\n  static get DEFAULT_ADDRESS() {\r\n    return '0.0.0.0';\r\n  }\r\n\r\n  /**\r\n   * The default port that the server is listening on.\r\n   * @type {number}\r\n   */\r\n  static get DEFAULT_PORT() {\r\n    return 3000;\r\n  }\r\n\r\n  /**\r\n   * Initializes a new instance of the class.\r\n   * @param {object} [options] An object specifying the server settings.\r\n   */\r\n  constructor(options = {}) {\r\n    super();\r\n\r\n    /**\r\n     * The routing table.\r\n     * @type {Map}\r\n     */\r\n    this.routes = new Map;\r\n    if ('routes' in options) for (let [host, route] of Object.entries(options.routes)) this.routes.set(host, this._normalizeRoute(route));\r\n    if ('target' in options) this.routes.set('*', this._normalizeRoute(options.target));\r\n\r\n    /**\r\n     * The underlying HTTP(S) service listening for requests.\r\n     * @type {http~Server|https~Server}\r\n     */\r\n    this._httpService = null;\r\n\r\n    /**\r\n     * The server settings.\r\n     * @type {object}\r\n     */\r\n    this._options = {\r\n      address: typeof options.address == 'string' ? options.address : Server.DEFAULT_ADDRESS,\r\n      port: Number.isInteger(options.port) ? options.port : Server.DEFAULT_PORT,\r\n      proxy: typeof options.proxy == 'object' && options.proxy ? options.proxy : null,\r\n      ssl: typeof options.ssl == 'object' && options.ssl ? options.ssl : null\r\n    };\r\n\r\n    /**\r\n     * The underlying proxy service providing custom application logic.\r\n     * @type {ProxyServer}\r\n     */\r\n    this._proxyService = null;\r\n  }\r\n\r\n  /**\r\n   * The class name.\r\n   * @type {string}\r\n   */\r\n  get [Symbol.toStringTag]() {\r\n    return 'Server';\r\n  }\r\n\r\n  /**\r\n   * The address that the server is listening on.\r\n   * @type {string}\r\n   */\r\n  get address() {\r\n    return this.listening ? this._httpService.address().address : this._options.address;\r\n  }\r\n\r\n  /**\r\n   * Value indicating whether the server is currently listening.\r\n   * @type {boolean}\r\n   */\r\n  get listening() {\r\n    return Boolean(this._httpService && this._httpService.listening);\r\n  }\r\n\r\n  /**\r\n   * The port that the server is listening on.\r\n   * @type {number}\r\n   */\r\n  get port() {\r\n    return this.listening ? this._httpService.address().port : this._options.port;\r\n  }\r\n\r\n  /**\r\n   * Stops the server from accepting new connections. It does nothing if the server is already closed.\r\n   * @emits {*} The \"close\" event.\r\n   */\r\n  async close() {\r\n    if (!this.listening) return;\r\n\r\n    const close = promisify(this._httpService.close.bind(this._httpService));\r\n    await close();\r\n\r\n    this._httpService = null;\r\n    this._proxyService = null;\r\n    this.emit('close');\r\n  }\r\n\r\n  /**\r\n   * Begin accepting connections. It does nothing if the server is already started.\r\n   * @param {number} [port] The port that the server should run on.\r\n   * @param {string} [address] The address that the server should run on.\r\n   * @return {Promise<number>} The port that the server is running on.\r\n   * @emits {*} The \"listening\" event.\r\n   */\r\n  async listen(port = this.port, address = this.address) {\r\n    if (this.listening) return this.port;\r\n\r\n    let requestHandler = this._onHTTPRequest.bind(this);\r\n    this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);\r\n    this._httpService.on('error', error => this.emit('error', error));\r\n    this._httpService.on('upgrade', this._onWSRequest.bind(this));\r\n\r\n    this._proxyService = createProxyServer(this._options.proxy);\r\n    this._proxyService.on('error', this._onRequestError.bind(this));\r\n\r\n    const listen = promisify(this._httpService.listen.bind(this._httpService));\r\n    await listen(port, address);\r\n\r\n    this.emit('listening');\r\n    return this.port;\r\n  }\r\n\r\n  /**\r\n   * Gets the host name contained in the headers of the specified request.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.\r\n   */\r\n  _getHostname(request) {\r\n    let headers = request.headers;\r\n    if (!('host' in headers)) return '*';\r\n\r\n    let index = headers.host.indexOf(':');\r\n    return index < 0 ? headers.host : headers.host.substr(0, index);\r\n  }\r\n\r\n  /**\r\n   * Normalizes the specified route.\r\n   * @param {*} route The route to normalize.\r\n   * @return {object} The normalized route.\r\n   * @throws {Error} The route has an invalid format.\r\n   */\r\n  _normalizeRoute(route) {\r\n    if (typeof route != 'object' || !route) route = {uri: route};\r\n\r\n    switch (typeof route.uri) {\r\n      case 'number':\r\n        route.uri = `http://127.0.0.1:${route.uri}`;\r\n        break;\r\n\r\n      case 'string':\r\n        if (!/^https?:/i.test(route.uri)) route.uri = `http://${route.uri}`;\r\n        break;\r\n\r\n      default:\r\n        throw new Error('The route has an invalid format.');\r\n    }\r\n\r\n    if (typeof route.headers != 'object' || !route.headers) route.headers = {};\r\n    else {\r\n      let map = {};\r\n      for (let [key, value] of Object.entries(route.headers)) map[key.toLowerCase()] = value;\r\n      route.headers = map;\r\n    }\r\n\r\n    return route;\r\n  }\r\n\r\n  /**\r\n   * Handles an HTTP request to a target.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {http~ServerResponse} response The response sent by the server.\r\n   * @emits {http~IncomingMessage} The \"request\" event.\r\n   */\r\n  _onHTTPRequest(request, response) {\r\n    this.emit('request', request, response);\r\n\r\n    let hostname = this._getHostname(request);\r\n    let pattern = this.routes.has(hostname) ? hostname : '*';\r\n    if (!this.routes.has(pattern)) this._sendStatus(response, 404);\r\n    else {\r\n      let target = this.routes.get(pattern);\r\n      Object.assign(request.headers, target.headers);\r\n      this._proxyService.web(request, response, {target: target.uri});\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Handles the error emitted if a request to a target fails.\r\n   * @param {Error} error The emitted error event.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {http~ServerResponse} response The response sent by the server.\r\n   * @emits {Error} The \"error\" event.\r\n   */\r\n  _onRequestError(error, request, response) {\r\n    this.emit('error', error);\r\n    this._sendStatus(response, 502);\r\n  }\r\n\r\n  /**\r\n   * Handles a WebSocket request to a target.\r\n   * @param {http~IncomingMessage} request The request sent by the client.\r\n   * @param {net~Socket} socket The network socket between the server and client.\r\n   * @param {Buffer} head The first packet of the upgraded stream.\r\n   */\r\n  _onWSRequest(request, socket, head) {\r\n    let hostname = this._getHostname(request);\r\n    let pattern = this.routes.has(hostname) ? hostname : '*';\r\n    if (this.routes.has(pattern)) {\r\n      let target = this.routes.get(pattern);\r\n      Object.assign(request.headers, target.headers);\r\n      this._proxyService.ws(request, socket, head, {target: target.uri});\r\n    }\r\n  }\r\n\r\n  /**\r\n   * Sends an HTTP status code and terminates the specified server response.\r\n   * @param {http~ServerResponse} response The server response.\r\n   * @param {number} statusCode The HTTP status code to send.\r\n   */\r\n  _sendStatus(response, statusCode) {\r\n    let message = STATUS_CODES[statusCode];\r\n    response.writeHead(statusCode, {\r\n      'Content-Length': Buffer.byteLength(message),\r\n      'Content-Type': 'text/plain; charset=utf-8'\r\n    });\r\n\r\n    response.end(message);\r\n  }\r\n};\r\n",
     "static": true,
     "longname": "C:/repo/reverse-proxy.js/lib/server.js",
     "access": "public",
@@ -983,12 +990,12 @@
     "lineNumber": 1
   },
   {
-    "__docId__": 68,
+    "__docId__": 71,
     "kind": "variable",
-    "name": "createServer",
+    "name": "EventEmitter",
     "memberof": "lib/server.js",
     "static": true,
-    "longname": "lib/server.js~createServer",
+    "longname": "lib/server.js~EventEmitter",
     "access": "public",
     "export": false,
     "importPath": "@cedx/reverse-proxy/lib/server.js",
@@ -1004,7 +1011,7 @@
     "ignore": true
   },
   {
-    "__docId__": 69,
+    "__docId__": 72,
     "kind": "variable",
     "name": "createServer",
     "memberof": "lib/server.js",
@@ -1025,12 +1032,12 @@
     "ignore": true
   },
   {
-    "__docId__": 70,
+    "__docId__": 73,
     "kind": "variable",
-    "name": "createProxyServer",
+    "name": "createServer",
     "memberof": "lib/server.js",
     "static": true,
-    "longname": "lib/server.js~createProxyServer",
+    "longname": "lib/server.js~createServer",
     "access": "public",
     "export": false,
     "importPath": "@cedx/reverse-proxy/lib/server.js",
@@ -1046,12 +1053,12 @@
     "ignore": true
   },
   {
-    "__docId__": 71,
+    "__docId__": 74,
     "kind": "variable",
-    "name": "Observable",
+    "name": "createProxyServer",
     "memberof": "lib/server.js",
     "static": true,
-    "longname": "lib/server.js~Observable",
+    "longname": "lib/server.js~createProxyServer",
     "access": "public",
     "export": false,
     "importPath": "@cedx/reverse-proxy/lib/server.js",
@@ -1067,7 +1074,28 @@
     "ignore": true
   },
   {
-    "__docId__": 72,
+    "__docId__": 75,
+    "kind": "variable",
+    "name": "promisify",
+    "memberof": "lib/server.js",
+    "static": true,
+    "longname": "lib/server.js~promisify",
+    "access": "public",
+    "export": false,
+    "importPath": "@cedx/reverse-proxy/lib/server.js",
+    "importStyle": null,
+    "description": null,
+    "lineNumber": 7,
+    "undocument": true,
+    "type": {
+      "types": [
+        "*"
+      ]
+    },
+    "ignore": true
+  },
+  {
+    "__docId__": 76,
     "kind": "class",
     "name": "Server",
     "memberof": "lib/server.js",
@@ -1078,11 +1106,14 @@
     "importPath": "@cedx/reverse-proxy/lib/server.js",
     "importStyle": "{Server}",
     "description": "Acts as an intermediary for requests from clients seeking resources from other servers.",
-    "lineNumber": 11,
-    "interface": false
+    "lineNumber": 12,
+    "interface": false,
+    "extends": [
+      "EventEmitter"
+    ]
   },
   {
-    "__docId__": 73,
+    "__docId__": 77,
     "kind": "get",
     "name": "DEFAULT_ADDRESS",
     "memberof": "lib/server.js~Server",
@@ -1092,7 +1123,7 @@
     "longname": "lib/server.js~Server.DEFAULT_ADDRESS",
     "access": "public",
     "description": "The default address that the server is listening on.",
-    "lineNumber": 17,
+    "lineNumber": 18,
     "type": {
       "nullable": null,
       "types": [
@@ -1103,7 +1134,7 @@
     }
   },
   {
-    "__docId__": 74,
+    "__docId__": 78,
     "kind": "get",
     "name": "DEFAULT_PORT",
     "memberof": "lib/server.js~Server",
@@ -1113,7 +1144,7 @@
     "longname": "lib/server.js~Server.DEFAULT_PORT",
     "access": "public",
     "description": "The default port that the server is listening on.",
-    "lineNumber": 25,
+    "lineNumber": 26,
     "type": {
       "nullable": null,
       "types": [
@@ -1124,7 +1155,7 @@
     }
   },
   {
-    "__docId__": 75,
+    "__docId__": 79,
     "kind": "constructor",
     "name": "constructor",
     "memberof": "lib/server.js~Server",
@@ -1134,7 +1165,7 @@
     "longname": "lib/server.js~Server#constructor",
     "access": "public",
     "description": "Initializes a new instance of the class.",
-    "lineNumber": 33,
+    "lineNumber": 34,
     "params": [
       {
         "nullable": null,
@@ -1149,7 +1180,7 @@
     ]
   },
   {
-    "__docId__": 76,
+    "__docId__": 80,
     "kind": "member",
     "name": "routes",
     "memberof": "lib/server.js~Server",
@@ -1157,7 +1188,7 @@
     "longname": "lib/server.js~Server#routes",
     "access": "public",
     "description": "The routing table.",
-    "lineNumber": 39,
+    "lineNumber": 41,
     "type": {
       "nullable": null,
       "types": [
@@ -1168,7 +1199,7 @@
     }
   },
   {
-    "__docId__": 77,
+    "__docId__": 81,
     "kind": "member",
     "name": "_httpService",
     "memberof": "lib/server.js~Server",
@@ -1176,92 +1207,12 @@
     "longname": "lib/server.js~Server#_httpService",
     "access": "private",
     "description": "The underlying HTTP(S) service listening for requests.",
-    "lineNumber": 47,
+    "lineNumber": 49,
     "type": {
       "nullable": null,
       "types": [
         "http~Server",
         "https~Server"
-      ],
-      "spread": false,
-      "description": null
-    },
-    "ignore": true
-  },
-  {
-    "__docId__": 78,
-    "kind": "member",
-    "name": "_onClose",
-    "memberof": "lib/server.js~Server",
-    "static": false,
-    "longname": "lib/server.js~Server#_onClose",
-    "access": "private",
-    "description": "The handler of \"close\" events.",
-    "lineNumber": 53,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject"
-      ],
-      "spread": false,
-      "description": null
-    },
-    "ignore": true
-  },
-  {
-    "__docId__": 79,
-    "kind": "member",
-    "name": "_onError",
-    "memberof": "lib/server.js~Server",
-    "static": false,
-    "longname": "lib/server.js~Server#_onError",
-    "access": "private",
-    "description": "The handler of \"error\" events.",
-    "lineNumber": 59,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject<Error>"
-      ],
-      "spread": false,
-      "description": null
-    },
-    "ignore": true
-  },
-  {
-    "__docId__": 80,
-    "kind": "member",
-    "name": "_onListening",
-    "memberof": "lib/server.js~Server",
-    "static": false,
-    "longname": "lib/server.js~Server#_onListening",
-    "access": "private",
-    "description": "The handler of \"listening\" events.",
-    "lineNumber": 65,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject"
-      ],
-      "spread": false,
-      "description": null
-    },
-    "ignore": true
-  },
-  {
-    "__docId__": 81,
-    "kind": "member",
-    "name": "_onRequest",
-    "memberof": "lib/server.js~Server",
-    "static": false,
-    "longname": "lib/server.js~Server#_onRequest",
-    "access": "private",
-    "description": "The handler of \"request\" events.",
-    "lineNumber": 71,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Subject<object>"
       ],
       "spread": false,
       "description": null
@@ -1277,7 +1228,7 @@
     "longname": "lib/server.js~Server#_options",
     "access": "private",
     "description": "The server settings.",
-    "lineNumber": 77,
+    "lineNumber": 55,
     "type": {
       "nullable": null,
       "types": [
@@ -1297,7 +1248,7 @@
     "longname": "lib/server.js~Server#_proxyService",
     "access": "private",
     "description": "The underlying proxy service providing custom application logic.",
-    "lineNumber": 88,
+    "lineNumber": 66,
     "type": {
       "nullable": null,
       "types": [
@@ -1311,15 +1262,15 @@
   {
     "__docId__": 84,
     "kind": "get",
-    "name": "address",
+    "name": "[Symbol.toStringTag]",
     "memberof": "lib/server.js~Server",
     "generator": false,
     "async": false,
     "static": false,
-    "longname": "lib/server.js~Server#address",
+    "longname": "lib/server.js~Server#[Symbol.toStringTag]",
     "access": "public",
-    "description": "The address that the server is listening on.",
-    "lineNumber": 95,
+    "description": "The class name.",
+    "lineNumber": 73,
     "type": {
       "nullable": null,
       "types": [
@@ -1332,6 +1283,27 @@
   {
     "__docId__": 85,
     "kind": "get",
+    "name": "address",
+    "memberof": "lib/server.js~Server",
+    "generator": false,
+    "async": false,
+    "static": false,
+    "longname": "lib/server.js~Server#address",
+    "access": "public",
+    "description": "The address that the server is listening on.",
+    "lineNumber": 81,
+    "type": {
+      "nullable": null,
+      "types": [
+        "string"
+      ],
+      "spread": false,
+      "description": null
+    }
+  },
+  {
+    "__docId__": 86,
+    "kind": "get",
     "name": "listening",
     "memberof": "lib/server.js~Server",
     "generator": false,
@@ -1340,7 +1312,7 @@
     "longname": "lib/server.js~Server#listening",
     "access": "public",
     "description": "Value indicating whether the server is currently listening.",
-    "lineNumber": 103,
+    "lineNumber": 89,
     "type": {
       "nullable": null,
       "types": [
@@ -1351,91 +1323,7 @@
     }
   },
   {
-    "__docId__": 86,
-    "kind": "get",
-    "name": "onClose",
-    "memberof": "lib/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "lib/server.js~Server#onClose",
-    "access": "public",
-    "description": "The stream of \"close\" events.",
-    "lineNumber": 111,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
     "__docId__": 87,
-    "kind": "get",
-    "name": "onError",
-    "memberof": "lib/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "lib/server.js~Server#onError",
-    "access": "public",
-    "description": "The stream of \"error\" events.",
-    "lineNumber": 119,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable<Error>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 88,
-    "kind": "get",
-    "name": "onListening",
-    "memberof": "lib/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "lib/server.js~Server#onListening",
-    "access": "public",
-    "description": "The stream of \"listening\" events.",
-    "lineNumber": 127,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 89,
-    "kind": "get",
-    "name": "onRequest",
-    "memberof": "lib/server.js~Server",
-    "generator": false,
-    "async": false,
-    "static": false,
-    "longname": "lib/server.js~Server#onRequest",
-    "access": "public",
-    "description": "The stream of \"request\" events.",
-    "lineNumber": 135,
-    "type": {
-      "nullable": null,
-      "types": [
-        "Observable<object>"
-      ],
-      "spread": false,
-      "description": null
-    }
-  },
-  {
-    "__docId__": 90,
     "kind": "get",
     "name": "port",
     "memberof": "lib/server.js~Server",
@@ -1445,7 +1333,7 @@
     "longname": "lib/server.js~Server#port",
     "access": "public",
     "description": "The port that the server is listening on.",
-    "lineNumber": 143,
+    "lineNumber": 97,
     "type": {
       "nullable": null,
       "types": [
@@ -1456,25 +1344,17 @@
     }
   },
   {
-    "__docId__": 91,
+    "__docId__": 88,
     "kind": "method",
     "name": "close",
     "memberof": "lib/server.js~Server",
     "generator": false,
-    "async": false,
+    "async": true,
     "static": false,
     "longname": "lib/server.js~Server#close",
     "access": "public",
     "description": "Stops the server from accepting new connections. It does nothing if the server is already closed.",
-    "lineNumber": 152,
-    "return": {
-      "nullable": null,
-      "types": [
-        "Observable"
-      ],
-      "spread": false,
-      "description": "Completes when the server is finally closed."
-    },
+    "lineNumber": 105,
     "emits": [
       {
         "types": [
@@ -1483,20 +1363,21 @@
         "description": "The \"close\" event."
       }
     ],
-    "params": []
+    "params": [],
+    "return": null
   },
   {
-    "__docId__": 94,
+    "__docId__": 91,
     "kind": "method",
     "name": "listen",
     "memberof": "lib/server.js~Server",
     "generator": false,
-    "async": false,
+    "async": true,
     "static": false,
     "longname": "lib/server.js~Server#listen",
     "access": "public",
     "description": "Begin accepting connections. It does nothing if the server is already started.",
-    "lineNumber": 170,
+    "lineNumber": 123,
     "params": [
       {
         "nullable": null,
@@ -1522,7 +1403,7 @@
     "return": {
       "nullable": null,
       "types": [
-        "Observable<number>"
+        "Promise<number>"
       ],
       "spread": false,
       "description": "The port that the server is running on."
@@ -1537,7 +1418,7 @@
     ]
   },
   {
-    "__docId__": 97,
+    "__docId__": 94,
     "kind": "method",
     "name": "_getHostname",
     "memberof": "lib/server.js~Server",
@@ -1547,7 +1428,7 @@
     "longname": "lib/server.js~Server#_getHostname",
     "access": "private",
     "description": "Gets the host name contained in the headers of the specified request.",
-    "lineNumber": 193,
+    "lineNumber": 146,
     "params": [
       {
         "nullable": null,
@@ -1571,7 +1452,7 @@
     "ignore": true
   },
   {
-    "__docId__": 98,
+    "__docId__": 95,
     "kind": "method",
     "name": "_normalizeRoute",
     "memberof": "lib/server.js~Server",
@@ -1581,7 +1462,7 @@
     "longname": "lib/server.js~Server#_normalizeRoute",
     "access": "private",
     "description": "Normalizes the specified route.",
-    "lineNumber": 207,
+    "lineNumber": 160,
     "params": [
       {
         "nullable": null,
@@ -1613,7 +1494,7 @@
     "ignore": true
   },
   {
-    "__docId__": 99,
+    "__docId__": 96,
     "kind": "method",
     "name": "_onHTTPRequest",
     "memberof": "lib/server.js~Server",
@@ -1623,7 +1504,7 @@
     "longname": "lib/server.js~Server#_onHTTPRequest",
     "access": "private",
     "description": "Handles an HTTP request to a target.",
-    "lineNumber": 239,
+    "lineNumber": 192,
     "params": [
       {
         "nullable": null,
@@ -1649,7 +1530,7 @@
     "emits": [
       {
         "types": [
-          "object"
+          "http~IncomingMessage"
         ],
         "description": "The \"request\" event."
       }
@@ -1658,7 +1539,7 @@
     "return": null
   },
   {
-    "__docId__": 100,
+    "__docId__": 97,
     "kind": "method",
     "name": "_onRequestError",
     "memberof": "lib/server.js~Server",
@@ -1668,7 +1549,7 @@
     "longname": "lib/server.js~Server#_onRequestError",
     "access": "private",
     "description": "Handles the error emitted if a request to a target fails.",
-    "lineNumber": 259,
+    "lineNumber": 212,
     "params": [
       {
         "nullable": null,
@@ -1713,7 +1594,7 @@
     "return": null
   },
   {
-    "__docId__": 101,
+    "__docId__": 98,
     "kind": "method",
     "name": "_onWSRequest",
     "memberof": "lib/server.js~Server",
@@ -1723,7 +1604,7 @@
     "longname": "lib/server.js~Server#_onWSRequest",
     "access": "private",
     "description": "Handles a WebSocket request to a target.",
-    "lineNumber": 270,
+    "lineNumber": 223,
     "params": [
       {
         "nullable": null,
@@ -1760,7 +1641,7 @@
     "return": null
   },
   {
-    "__docId__": 102,
+    "__docId__": 99,
     "kind": "method",
     "name": "_sendStatus",
     "memberof": "lib/server.js~Server",
@@ -1770,7 +1651,7 @@
     "longname": "lib/server.js~Server#_sendStatus",
     "access": "private",
     "description": "Sends an HTTP status code and terminates the specified server response.",
-    "lineNumber": 285,
+    "lineNumber": 238,
     "params": [
       {
         "nullable": null,
@@ -1798,7 +1679,7 @@
   },
   {
     "kind": "index",
-    "content": "# Reverse-Proxy.js\r\n![Runtime](https://img.shields.io/badge/node-%3E%3D8.0-brightgreen.svg) ![Release](https://img.shields.io/npm/v/@cedx/reverse-proxy.svg) ![License](https://img.shields.io/npm/l/@cedx/reverse-proxy.svg) ![Downloads](https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg) ![Dependencies](https://david-dm.org/cedx/reverse-proxy.js.svg) ![Coverage](https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg) ![Build](https://travis-ci.org/cedx/reverse-proxy.js.svg)\r\n\r\n[Observable](http://reactivex.io/intro.html)-based reverse proxy server supporting WebSockets, implemented in [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).\r\n\r\nLet's suppose you were running multiple HTTP application servers, but you only wanted to expose one machine to the Internet. You could setup Reverse-Proxy.js on that one machine and then reverse-proxy the incoming HTTP requests to locally running services which were not exposed to the outside network.\r\n\r\n## Features\r\n- Configuration based on simple [JSON](http://www.json.org) or [YAML](http://yaml.org) files.\r\n- Routing tables based on host names.\r\n- Multiple instances: allows to listen on several ports, with each one having its own target(s).\r\n- Supports HTTPS protocol.\r\n- Supports [WebSockets](https://en.wikipedia.org/wiki/WebSocket) requests.\r\n- Supports custom HTTP headers.\r\n\r\n## Requirements\r\nThe latest [Node.js](https://nodejs.org) and [npm](https://www.npmjs.com) versions.\r\nIf you plan to play with the sources, you will also need the latest [Gulp](http://gulpjs.com) version.\r\n\r\n## Installing via [npm](https://www.npmjs.com)\r\nFrom a command prompt with administrator privileges, run:\r\n\r\n```shell\r\n$ npm install --global @cedx/reverse-proxy\r\n```\r\n\r\n## Usage\r\nThis application provides a command line interface:\r\n\r\n```\r\n$ reverse-proxy --help\r\n\r\n  Usage: reverse-proxy [options]\r\n  \r\n  Simple reverse proxy server supporting WebSockets.\r\n\r\n  Options:\r\n\r\n    -h, --help               output usage information\r\n    -v, --version            output the version number\r\n    -a, --address <address>  address that the reverse proxy should run on [0.0.0.0]\r\n    -p, --port <port>        port that the reverse proxy should run on [3000]\r\n    -t, --target <target>    location of the server the proxy will target\r\n    -c, --config <path>      location of the configuration file for the reverse proxy\r\n    -u, --user <user>        user to drop privileges to once server socket is bound\r\n    --silent                 silence the log output from the reverse proxy\r\n```\r\n\r\n### Setup a basic stand-alone proxy server\r\nFrom a command prompt:\r\n\r\n```shell\r\n$ reverse-proxy --port 80 --target 3000\r\n```\r\n\r\nThis will proxy all HTTP requests on port 80 on all network interfaces (e.g. `0.0.0.0`) to port 3000 on the same host (e. g. `127.0.0.1`). For a different target host:\r\n\r\n```shell\r\n$ reverse-proxy --port 80 --target 192.168.0.1:3000\r\n$ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data\r\n```\r\n\r\nYou can also use a configuration file for the same task. See the [`basic_standalone.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/basic_standalone.json) or [`basic_standalone.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/basic_standalone.yaml) file in the `example` folder of this package:\r\n\r\n```shell\r\n$ reverse-proxy --config example/yaml/basic_standalone.yaml\r\n```\r\n\r\nFor more advanced usages, you **always** need to use configuration files.\r\n\r\n> A target server can be expressed in two possible ways in the configuration file:\r\n> - a string or a number representing an URI: `3000` (a port of the local host), `\"domain.com:8080\"` (an authority) or `\"http://domain.com:8080\"` (an origin).\r\n> - an object with a `uri` property having the same format: `{\"uri\": 3000}`, `{\"uri\": \"domain.com:8080\"}` or `{\"uri\": \"http://domain.com:8080\"}`.\r\n\r\n### Using HTTPS\r\nA common use-case for proxying in conjunction with HTTPS is that you have some front-facing HTTPS server, but all of your internal traffic is HTTP. In this way, you can reduce the number of servers to which your CA and other important security files are deployed and reduce the computational overhead from HTTPS traffic.\r\n\r\nIf you want the proxy server to use HTTPS protocol, you need to provide a `ssl` key in your configuration file.\r\n\r\nThis object will be used as the first argument to [`https~createServer()`](http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener) function when instanciating the proxy server.\r\nIts structure is similar to the `options` parameter of [`tls~createServer()`](http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener) function.\r\n\r\nSee the [`https_to_http.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/https_to_http.json) or [`https_to_http.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/https_to_http.yaml) file in the `example` folder. The `cert` and `key` fields are file paths: the corresponding files are loaded by the CLI script.\r\n\r\n### Proxy requests using a routing table\r\nA routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the [HTTP `Host` header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html).\r\n\r\nTo use hostname routing, you need to provide a `routes` key in your configuration file, instead of a `target` key. The value of this key is an object where keys are hostnames and values are target locations.\r\nUse an asterisk (`*`) as host name to define the route matched by default when a host name is not found.\r\n\r\nSee the [`routing_table.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json) or [`routing_table.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml) file in the `example` folder.\r\n\r\n### Listening on multiple ports\r\nIn order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.\r\n\r\nSee the [`multiple_ports.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json) or [`multiple_ports.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml) file in the `example` folder.\r\n\r\n### Adding HTTP headers to the proxied requests\r\nIt can sometimes be useful to add some HTTP headers to the requests sent to the target servers.\r\n\r\nLet say that you have a remote service that needs basic authentication, but that you want to expose publicly. You could add an `Authorization` header to the proxied requests in order to let the remote service accept these requests.\r\n\r\nTo add an header to all the proxied requests of a target, you must use the object notation for this target, and a `headers` property providing a map of the HTTP headers to set.\r\n\r\n> The HTTP headers defined in this way will replace **any** existing headers with the same name.\r\n\r\nSee the [`http_headers.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/http_headers.json) or [`http_headers.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/http_headers.yaml) file in the `example` folder.\r\n\r\n## Configuration schema\r\nThe [`defaults.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json) or [`defaults.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml) file, in the `example` folder of this package, lists all available settings and their default values.\r\n\r\n## See also\r\n- [API reference](https://cedx.github.io/reverse-proxy.js)\r\n- [Code coverage](https://coveralls.io/github/cedx/reverse-proxy.js)\r\n- [Continuous integration](https://travis-ci.org/cedx/reverse-proxy.js)\r\n\r\n## License\r\n[Reverse-Proxy.js](https://github.com/cedx/reverse-proxy.js) is distributed under the Apache License, version 2.0.\r\n",
+    "content": "# Reverse-Proxy.js\r\n![Runtime](https://img.shields.io/badge/node-%3E%3D8.4-brightgreen.svg) ![Release](https://img.shields.io/npm/v/@cedx/reverse-proxy.svg) ![License](https://img.shields.io/npm/l/@cedx/reverse-proxy.svg) ![Downloads](https://img.shields.io/npm/dt/@cedx/reverse-proxy.svg) ![Dependencies](https://david-dm.org/cedx/reverse-proxy.js.svg) ![Coverage](https://coveralls.io/repos/github/cedx/reverse-proxy.js/badge.svg) ![Build](https://travis-ci.org/cedx/reverse-proxy.js.svg)\r\n\r\nSimple reverse proxy server supporting WebSockets, implemented in [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).\r\n\r\nLet's suppose you were running multiple HTTP application servers, but you only wanted to expose one machine to the Internet. You could setup Reverse-Proxy.js on that one machine and then reverse-proxy the incoming HTTP requests to locally running services which were not exposed to the outside network.\r\n\r\n## Features\r\n- Configuration based on simple [JSON](http://www.json.org) or [YAML](http://yaml.org) files.\r\n- Routing tables based on host names.\r\n- Multiple instances: allows to listen on several ports, with each one having its own target(s).\r\n- Supports HTTPS protocol.\r\n- Supports [WebSockets](https://en.wikipedia.org/wiki/WebSocket) requests.\r\n- Supports custom HTTP headers.\r\n\r\n## Requirements\r\nThe latest [Node.js](https://nodejs.org) and [npm](https://www.npmjs.com) versions.\r\nIf you plan to play with the sources, you will also need the latest [Gulp](http://gulpjs.com) version.\r\n\r\n## Installing via [npm](https://www.npmjs.com)\r\nFrom a command prompt with administrator privileges, run:\r\n\r\n```shell\r\n$ npm install --global @cedx/reverse-proxy\r\n```\r\n\r\n## Usage\r\nThis application provides a command line interface:\r\n\r\n```\r\n$ reverse-proxy --help\r\n\r\n  Usage: reverse-proxy [options]\r\n  \r\n  Simple reverse proxy server supporting WebSockets.\r\n\r\n  Options:\r\n\r\n    -h, --help               output usage information\r\n    -v, --version            output the version number\r\n    -a, --address <address>  address that the reverse proxy should run on [0.0.0.0]\r\n    -p, --port <port>        port that the reverse proxy should run on [3000]\r\n    -t, --target <target>    location of the server the proxy will target\r\n    -c, --config <path>      location of the configuration file for the reverse proxy\r\n    -u, --user <user>        user to drop privileges to once server socket is bound\r\n    --silent                 silence the log output from the reverse proxy\r\n```\r\n\r\n### Setup a basic stand-alone proxy server\r\nFrom a command prompt:\r\n\r\n```shell\r\n$ reverse-proxy --port 80 --target 3000\r\n```\r\n\r\nThis will proxy all HTTP requests on port 80 on all network interfaces (e.g. `0.0.0.0`) to port 3000 on the same host (e. g. `127.0.0.1`). For a different target host:\r\n\r\n```shell\r\n$ reverse-proxy --port 80 --target 192.168.0.1:3000\r\n$ reverse-proxy --port 8080 --target http://another.host:8080 --user www-data\r\n```\r\n\r\nYou can also use a configuration file for the same task. See the [`basic_standalone.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/basic_standalone.json) or [`basic_standalone.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/basic_standalone.yaml) file in the `example` folder of this package:\r\n\r\n```shell\r\n$ reverse-proxy --config example/yaml/basic_standalone.yaml\r\n```\r\n\r\nFor more advanced usages, you **always** need to use configuration files.\r\n\r\n> A target server can be expressed in two possible ways in the configuration file:\r\n> - a string or a number representing an URI: `3000` (a port of the local host), `\"domain.com:8080\"` (an authority) or `\"http://domain.com:8080\"` (an origin).\r\n> - an object with a `uri` property having the same format: `{\"uri\": 3000}`, `{\"uri\": \"domain.com:8080\"}` or `{\"uri\": \"http://domain.com:8080\"}`.\r\n\r\n### Using HTTPS\r\nA common use-case for proxying in conjunction with HTTPS is that you have some front-facing HTTPS server, but all of your internal traffic is HTTP. In this way, you can reduce the number of servers to which your CA and other important security files are deployed and reduce the computational overhead from HTTPS traffic.\r\n\r\nIf you want the proxy server to use HTTPS protocol, you need to provide a `ssl` key in your configuration file.\r\n\r\nThis object will be used as the first argument to [`https~createServer()`](http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener) function when instanciating the proxy server.\r\nIts structure is similar to the `options` parameter of [`tls~createServer()`](http://nodejs.org/api/tls.html#tls_tls_createserver_options_secureconnectionlistener) function.\r\n\r\nSee the [`https_to_http.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/https_to_http.json) or [`https_to_http.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/https_to_http.yaml) file in the `example` folder. The `cert` and `key` fields are file paths: the corresponding files are loaded by the CLI script.\r\n\r\n### Proxy requests using a routing table\r\nA routing table is a simple lookup table that maps incoming requests to proxy target locations. The mapping is based on the [HTTP `Host` header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html).\r\n\r\nTo use hostname routing, you need to provide a `routes` key in your configuration file, instead of a `target` key. The value of this key is an object where keys are hostnames and values are target locations.\r\nUse an asterisk (`*`) as host name to define the route matched by default when a host name is not found.\r\n\r\nSee the [`routing_table.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/routing_table.json) or [`routing_table.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/routing_table.yaml) file in the `example` folder.\r\n\r\n### Listening on multiple ports\r\nIn order to listen on several ports, all you have to do is use a JSON array or a YAML stream containing a different configuration object for each port to listen. Consequently, each port can have its own settings and routing table.\r\n\r\nSee the [`multiple_ports.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/multiple_ports.json) or [`multiple_ports.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/multiple_ports.yaml) file in the `example` folder.\r\n\r\n### Adding HTTP headers to the proxied requests\r\nIt can sometimes be useful to add some HTTP headers to the requests sent to the target servers.\r\n\r\nLet say that you have a remote service that needs basic authentication, but that you want to expose publicly. You could add an `Authorization` header to the proxied requests in order to let the remote service accept these requests.\r\n\r\nTo add an header to all the proxied requests of a target, you must use the object notation for this target, and a `headers` property providing a map of the HTTP headers to set.\r\n\r\n> The HTTP headers defined in this way will replace **any** existing headers with the same name.\r\n\r\nSee the [`http_headers.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/http_headers.json) or [`http_headers.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/http_headers.yaml) file in the `example` folder.\r\n\r\n## Configuration schema\r\nThe [`defaults.json`](https://github.com/cedx/reverse-proxy.js/blob/master/example/json/defaults.json) or [`defaults.yaml`](https://github.com/cedx/reverse-proxy.js/blob/master/example/yaml/defaults.yaml) file, in the `example` folder of this package, lists all available settings and their default values.\r\n\r\n## See also\r\n- [API reference](https://cedx.github.io/reverse-proxy.js)\r\n- [Code coverage](https://coveralls.io/github/cedx/reverse-proxy.js)\r\n- [Continuous integration](https://travis-ci.org/cedx/reverse-proxy.js)\r\n\r\n## License\r\n[Reverse-Proxy.js](https://github.com/cedx/reverse-proxy.js) is distributed under the MIT License.\r\n",
     "longname": "C:\\repo\\reverse-proxy.js\\README.md",
     "name": "./README.md",
     "static": true,
@@ -1806,7 +1687,7 @@
   },
   {
     "kind": "packageJSON",
-    "content": "{\n  \"author\": \"Cédric Belin <cedric@belin.io>\",\n  \"bugs\": \"https://github.com/cedx/reverse-proxy.js/issues\",\n  \"description\": \"Observable-based reverse proxy server supporting WebSockets.\",\n  \"homepage\": \"https://github.com/cedx/reverse-proxy.js\",\n  \"license\": \"Apache-2.0\",\n  \"main\": \"./lib/index\",\n  \"name\": \"@cedx/reverse-proxy\",\n  \"preferGlobal\": true,\n  \"repository\": \"cedx/reverse-proxy.js\",\n  \"version\": \"6.1.0\",\n  \"bin\": {\n    \"reverse-proxy\": \"./bin/cli.js\"\n  },\n  \"dependencies\": {\n    \"commander\": \"^2.11.0\",\n    \"http-proxy\": \"^1.16.2\",\n    \"js-yaml\": \"^3.9.1\",\n    \"morgan\": \"^1.8.2\",\n    \"rxjs\": \"^5.4.2\"\n  },\n  \"devDependencies\": {\n    \"@cedx/coveralls\": \"^2.2.0\",\n    \"@cedx/gulp-david\": \"^8.1.0\",\n    \"chai\": \"^4.1.0\",\n    \"del\": \"^3.0.0\",\n    \"esdoc\": \"^1.0.1\",\n    \"esdoc-node\": \"^1.0.2\",\n    \"esdoc-standard-plugin\": \"^1.0.0\",\n    \"estraverse\": \"^4.2.0\",\n    \"gulp\": \"^3.9.1\",\n    \"gulp-eslint\": \"^4.0.0\",\n    \"mocha\": \"^3.5.0\",\n    \"nsp\": \"^2.7.0\",\n    \"nyc\": \"^11.1.0\"\n  },\n  \"engines\": {\n    \"node\": \">=8.0.0\"\n  },\n  \"keywords\": [\n    \"http\",\n    \"observable\",\n    \"proxy\",\n    \"reverse\",\n    \"routing\",\n    \"rxjs\",\n    \"server\",\n    \"websocket\"\n  ],\n  \"scripts\": {\n    \"coverage\": \"coveralls var/lcov.info\",\n    \"start\": \"gulp watch\",\n    \"test\": \"nyc --report-dir=var --reporter=lcovonly mocha --recursive\"\n  }\n}\n",
+    "content": "{\r\n  \"author\": \"Cédric Belin <cedric@belin.io>\",\r\n  \"bugs\": \"https://github.com/cedx/reverse-proxy.js/issues\",\r\n  \"description\": \"Simple reverse proxy server supporting WebSockets.\",\r\n  \"homepage\": \"https://github.com/cedx/reverse-proxy.js\",\r\n  \"license\": \"MIT\",\r\n  \"main\": \"./lib/index\",\r\n  \"name\": \"@cedx/reverse-proxy\",\r\n  \"preferGlobal\": true,\r\n  \"repository\": \"cedx/reverse-proxy.js\",\r\n  \"version\": \"7.0.0\",\r\n  \"bin\": {\r\n    \"reverse-proxy\": \"./bin/cli.js\"\r\n  },\r\n  \"dependencies\": {\r\n    \"commander\": \"^2.11.0\",\r\n    \"http-proxy\": \"^1.16.2\",\r\n    \"js-yaml\": \"^3.9.1\",\r\n    \"morgan\": \"^1.8.2\"\r\n  },\r\n  \"devDependencies\": {\r\n    \"@cedx/coveralls\": \"^4.0.0\",\r\n    \"@cedx/gulp-david\": \"^10.0.0\",\r\n    \"chai\": \"^4.1.2\",\r\n    \"del\": \"^3.0.0\",\r\n    \"esdoc\": \"^1.0.2\",\r\n    \"esdoc-node\": \"^1.0.2\",\r\n    \"esdoc-standard-plugin\": \"^1.0.0\",\r\n    \"gulp\": \"^3.9.1\",\r\n    \"gulp-eslint\": \"^4.0.0\",\r\n    \"mocha\": \"^3.5.0\",\r\n    \"nsp\": \"^2.8.0\",\r\n    \"nyc\": \"^11.2.1\"\r\n  },\r\n  \"engines\": {\r\n    \"node\": \">=8.4.0\"\r\n  },\r\n  \"keywords\": [\r\n    \"http\",\r\n    \"proxy\",\r\n    \"reverse\",\r\n    \"routing\",\r\n    \"server\",\r\n    \"websocket\"\r\n  ],\r\n  \"scripts\": {\r\n    \"coverage\": \"coveralls var/lcov.info\",\r\n    \"start\": \"gulp watch\",\r\n    \"test\": \"nyc --report-dir=var --reporter=lcovonly mocha --recursive\"\r\n  }\r\n}\r\n",
     "longname": "C:\\repo\\reverse-proxy.js\\package.json",
     "name": "package.json",
     "static": true,
@@ -1824,15 +1705,15 @@
     "kind": "manual",
     "longname": "C:\\repo\\reverse-proxy.js\\CHANGELOG.md",
     "name": "CHANGELOG.md",
-    "content": "# Changelog\r\nThis file contains highlights of what changes on each version of the [Reverse-Proxy.js](https://www.npmjs.com/package/@cedx/reverse-proxy) package.\r\n\r\n## Version 6.1.0\r\n- Removed the dependency on [Babel](https://babeljs.io) compiler.\r\n- Updated the package dependencies.\r\n\r\n## Version 6.0.1\r\n- Fixed a packaging issue.\r\n\r\n## Version 6.0.0\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: restored the [Observable](http://reactivex.io/intro.html) APIs.\r\n- Added new unit tests.\r\n- Updated the package dependencies.\r\n\r\n## Version 5.0.1\r\n- Fixed a code generation bug.\r\n- Updated the package dependencies.\r\n\r\n## Version 5.0.0\r\n- Breaking change: renamed the `Application#loadConfig` method to `init`.\r\n- Breaking change: renamed the `Application#setUser` method to `_setUser`.\r\n- Breaking change: renamed the `Application#startServers` method to `_startServers`.\r\n- Added the `Application#servers` property.\r\n- Added new unit tests.\r\n\r\n## Version 4.0.1\r\n- Fixed the [issue #5](https://github.com/cedx/reverse-proxy.js/issues/5): regression in the `Application#setUser` method.\r\n\r\n## Version 4.0.0\r\n- Breaking change: removed the `Application#log` method.\r\n- The response object is also provided in `request` events.\r\n- The routing table of a `Server` is now exposed as the `routes` property.\r\n- Using the [Morgan](https://www.npmjs.com/package/morgan) module to handle the logging.\r\n\r\n## Version 3.1.0\r\n- Added support for the [Node Security Platform](https://nodesecurity.io) reports.\r\n- Updated the package dependencies.\r\n\r\n## Version 3.0.0\r\n- Breaking change: dropped the dependency on [Observables](http://reactivex.io/intro.html).\r\n- Breaking change: renamed the `listen` event to `listening`.\r\n- Breaking change: the `Server` class is now an [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).\r\n\r\n## Version 2.2.0\r\n- Added support of HTTP headers: feature request from [issue #4](https://github.com/cedx/reverse-proxy.js/issues/4).\r\n- Fixed a bug in the reading of the SSL certificates.\r\n\r\n## Version 2.1.0\r\n- Using asynchronous file access in `Application#_parseConfig` method.\r\n- Updated the package dependencies.\r\n\r\n## Version 2.0.0\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: removed the `global.app` property.\r\n- Breaking change: using ES2017 features, like async/await functions.\r\n- Improved the build system.\r\n- Ported the unit test assertions from [TDD](https://en.wikipedia.org/wiki/Test-driven_development) to [BDD](https://en.wikipedia.org/wiki/Behavior-driven_development).\r\n- Removed the dependency on the `forever` module.\r\n- Removed the dependency on the `gulp-load-plugins` module.\r\n- Updated the package dependencies.\r\n\r\n## Version 1.2.0\r\n- Replaced the [Codacy](https://www.codacy.com) code coverage service by the [Coveralls](https://coveralls.io) one.\r\n- Updated the package dependencies.\r\n\r\n## Version 1.1.0\r\n- Added the `Server#listening` property.\r\n\r\n## Version 1.0.0\r\n- Breaking change: changed the HTTP status code used when an error occurred.\r\n- Breaking change: ported the [CommonJS](https://nodejs.org/api/modules.html) modules to ES2015 format.\r\n- Breaking change: ported the [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)-based APIs to [Observables](http://reactivex.io/intro.html).\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: replaced the test classes by plain tests.\r\n- Breaking change: the `Server` class is not anymore an [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).\r\n- Added a build task for fixing the coding standards issues.\r\n- Added the `onClose`, `onError`, `onListen` and `onRequest` event streams to the `Server` class.\r\n- Replaced [JSDoc](http://usejsdoc.org) documentation generator by [ESDoc](https://esdoc.org).\r\n- Replaced [JSHint](http://jshint.com) linter by [ESLint](http://eslint.org).\r\n- Updated the package dependencies.\r\n\r\n## Version 0.7.0\r\n- Breaking change: renamed the `Server.DEFAULT_HOST` property to `DEFAULT_ADDRESS`.\r\n- Breaking change: renamed the `Server#host` property to `address`.\r\n- Breaking change: renamed the `-H, --host` command line option to `-a, --address`.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.6.0\r\n- Breaking change: using more ES2015 features, like default parameters and destructuring assignment.\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Turned the package into a [scoped one](https://docs.npmjs.com/getting-started/scoped-packages).\r\n- Added the `DEFAULT_HOST` and `DEFAULT_PORT` constants to the `Server` class.\r\n- Replaced [SonarQube](http://www.sonarqube.org) code analyzer by [Codacy](https://www.codacy.com) service.\r\n\r\n## Version 0.5.4\r\n- Fixed some bugs.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.5.3\r\n- Improved the way the server address is reported.\r\n- The application instance is now exposed as `global.app` property.\r\n\r\n## Version 0.5.2\r\n- Restored support for configuration files in [JSON](http://www.json.org) format.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.5.1\r\n- The `port` parameter of the `Server#listen` method is now optional.\r\n- Added unit tests.\r\n- Added support for code coverage.\r\n- Added support for [Travis CI](https://travis-ci.org) continuous integration.\r\n\r\n## Version 0.5.0\r\n- Breaking change: using ES2015 features, like arrow functions, block-scoped binding constructs, classes and template strings.\r\n- Breaking change: raised the required [Node.js](http://nodejs.org) version.\r\n- Breaking change: changed the whole API of `Application` class.\r\n- Breaking change: changed the format of `Server#request` event.\r\n- Breaking change: changed the format of configuration files to [YAML](http://yaml.org).\r\n- Added support for [SonarQube](http://www.sonarqube.org) code analyzer.\r\n- Changed the documentation system for [JSDoc](http://usejsdoc.org).\r\n- Changed licensing for the [Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).\r\n\r\n## Version 0.4.1\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.4.0\r\n- Raised the required [Node.js](http://nodejs.org) version.\r\n- Removed the dependency on [`promise`](https://www.npmjs.com/package/promise) module.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.3.0\r\n- Breaking change: ported the callback-based API to [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).\r\n- Using [Gulp](http://gulpjs.com) as build system.\r\n- Fixed the [issue #1](https://github.com/cedx/reverse-proxy.js/issues/1): using a Unix system for publishing the package on [npm](https://www.npmjs.com).\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.2.1\r\n- Added `Application` class, used in CLI script.\r\n- Added sample configuration files.\r\n- Updated the documentation.\r\n\r\n## Version 0.2.0\r\n- The `Server` class and CLI now uses port 3000 as default.\r\n- Added `Server#listening` event.\r\n- Improved the event handling.\r\n- Updated the package dependencies.\r\n- Breaking change: removed `Server#upgrade` event.\r\n- Using DocGen.js to generate the API reference.\r\n\r\n## Version 0.1.0\r\n- Initial release.\r\n",
+    "content": "# Changelog\r\nThis file contains highlights of what changes on each version of the [Reverse-Proxy.js](https://www.npmjs.com/package/@cedx/reverse-proxy) package.\r\n\r\n## Version 7.0.0\r\n- Breaking change: converted the [`Observable`](http://reactivex.io/intro.html)-based API to an `async/await`-based one.\r\n- Breaking change: converted the `Subject` event API to the [`EventEmitter`](https://nodejs.org/api/events.html) one.\r\n- Added the [`#[Symbol.toStringTag]`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toStringTag) property to all classes.\r\n- Changed licensing for the [MIT License](https://opensource.org/licenses/MIT).\r\n\r\n## Version 6.1.0\r\n- Removed the dependency on [Babel](https://babeljs.io) compiler.\r\n- Updated the package dependencies.\r\n\r\n## Version 6.0.1\r\n- Fixed a packaging issue.\r\n\r\n## Version 6.0.0\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: restored the [Observable](http://reactivex.io/intro.html) APIs.\r\n- Added new unit tests.\r\n- Updated the package dependencies.\r\n\r\n## Version 5.0.1\r\n- Fixed a code generation bug.\r\n- Updated the package dependencies.\r\n\r\n## Version 5.0.0\r\n- Breaking change: renamed the `Application#loadConfig` method to `init`.\r\n- Breaking change: renamed the `Application#setUser` method to `_setUser`.\r\n- Breaking change: renamed the `Application#startServers` method to `_startServers`.\r\n- Added the `Application#servers` property.\r\n- Added new unit tests.\r\n\r\n## Version 4.0.1\r\n- Fixed the [issue #5](https://github.com/cedx/reverse-proxy.js/issues/5): regression in the `Application#setUser` method.\r\n\r\n## Version 4.0.0\r\n- Breaking change: removed the `Application#log` method.\r\n- The response object is also provided in `request` events.\r\n- The routing table of a `Server` is now exposed as the `routes` property.\r\n- Using the [Morgan](https://www.npmjs.com/package/morgan) module to handle the logging.\r\n\r\n## Version 3.1.0\r\n- Added support for the [Node Security Platform](https://nodesecurity.io) reports.\r\n- Updated the package dependencies.\r\n\r\n## Version 3.0.0\r\n- Breaking change: dropped the dependency on [Observables](http://reactivex.io/intro.html).\r\n- Breaking change: renamed the `listen` event to `listening`.\r\n- Breaking change: the `Server` class is now an [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).\r\n\r\n## Version 2.2.0\r\n- Added support of HTTP headers: feature request from [issue #4](https://github.com/cedx/reverse-proxy.js/issues/4).\r\n- Fixed a bug in the reading of the SSL certificates.\r\n\r\n## Version 2.1.0\r\n- Using asynchronous file access in `Application#_parseConfig` method.\r\n- Updated the package dependencies.\r\n\r\n## Version 2.0.0\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: removed the `global.app` property.\r\n- Breaking change: using ES2017 features, like async/await functions.\r\n- Improved the build system.\r\n- Ported the unit test assertions from [TDD](https://en.wikipedia.org/wiki/Test-driven_development) to [BDD](https://en.wikipedia.org/wiki/Behavior-driven_development).\r\n- Removed the dependency on the `forever` module.\r\n- Removed the dependency on the `gulp-load-plugins` module.\r\n- Updated the package dependencies.\r\n\r\n## Version 1.2.0\r\n- Replaced the [Codacy](https://www.codacy.com) code coverage service by the [Coveralls](https://coveralls.io) one.\r\n- Updated the package dependencies.\r\n\r\n## Version 1.1.0\r\n- Added the `Server#listening` property.\r\n\r\n## Version 1.0.0\r\n- Breaking change: changed the HTTP status code used when an error occurred.\r\n- Breaking change: ported the [CommonJS](https://nodejs.org/api/modules.html) modules to ES2015 format.\r\n- Breaking change: ported the [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)-based APIs to [Observables](http://reactivex.io/intro.html).\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Breaking change: replaced the test classes by plain tests.\r\n- Breaking change: the `Server` class is not anymore an [EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter).\r\n- Added a build task for fixing the coding standards issues.\r\n- Added the `onClose`, `onError`, `onListen` and `onRequest` event streams to the `Server` class.\r\n- Replaced [JSDoc](http://usejsdoc.org) documentation generator by [ESDoc](https://esdoc.org).\r\n- Replaced [JSHint](http://jshint.com) linter by [ESLint](http://eslint.org).\r\n- Updated the package dependencies.\r\n\r\n## Version 0.7.0\r\n- Breaking change: renamed the `Server.DEFAULT_HOST` property to `DEFAULT_ADDRESS`.\r\n- Breaking change: renamed the `Server#host` property to `address`.\r\n- Breaking change: renamed the `-H, --host` command line option to `-a, --address`.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.6.0\r\n- Breaking change: using more ES2015 features, like default parameters and destructuring assignment.\r\n- Breaking change: raised the required [Node.js](https://nodejs.org) version.\r\n- Turned the package into a [scoped one](https://docs.npmjs.com/getting-started/scoped-packages).\r\n- Added the `DEFAULT_HOST` and `DEFAULT_PORT` constants to the `Server` class.\r\n- Replaced [SonarQube](http://www.sonarqube.org) code analyzer by [Codacy](https://www.codacy.com) service.\r\n\r\n## Version 0.5.4\r\n- Fixed some bugs.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.5.3\r\n- Improved the way the server address is reported.\r\n- The application instance is now exposed as `global.app` property.\r\n\r\n## Version 0.5.2\r\n- Restored support for configuration files in [JSON](http://www.json.org) format.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.5.1\r\n- The `port` parameter of the `Server#listen` method is now optional.\r\n- Added unit tests.\r\n- Added support for code coverage.\r\n- Added support for [Travis CI](https://travis-ci.org) continuous integration.\r\n\r\n## Version 0.5.0\r\n- Breaking change: using ES2015 features, like arrow functions, block-scoped binding constructs, classes and template strings.\r\n- Breaking change: raised the required [Node.js](http://nodejs.org) version.\r\n- Breaking change: changed the whole API of `Application` class.\r\n- Breaking change: changed the format of `Server#request` event.\r\n- Breaking change: changed the format of configuration files to [YAML](http://yaml.org).\r\n- Added support for [SonarQube](http://www.sonarqube.org) code analyzer.\r\n- Changed the documentation system for [JSDoc](http://usejsdoc.org).\r\n- Changed licensing for the [Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).\r\n\r\n## Version 0.4.1\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.4.0\r\n- Raised the required [Node.js](http://nodejs.org) version.\r\n- Removed the dependency on [`promise`](https://www.npmjs.com/package/promise) module.\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.3.0\r\n- Breaking change: ported the callback-based API to [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).\r\n- Using [Gulp](http://gulpjs.com) as build system.\r\n- Fixed the [issue #1](https://github.com/cedx/reverse-proxy.js/issues/1): using a Unix system for publishing the package on [npm](https://www.npmjs.com).\r\n- Upgraded the package dependencies.\r\n\r\n## Version 0.2.1\r\n- Added `Application` class, used in CLI script.\r\n- Added sample configuration files.\r\n- Updated the documentation.\r\n\r\n## Version 0.2.0\r\n- The `Server` class and CLI now uses port 3000 as default.\r\n- Added `Server#listening` event.\r\n- Improved the event handling.\r\n- Updated the package dependencies.\r\n- Breaking change: removed `Server#upgrade` event.\r\n- Using DocGen.js to generate the API reference.\r\n\r\n## Version 0.1.0\r\n- Initial release.\r\n",
     "static": true,
     "access": "public"
   },
   {
-    "__docId__": 103,
+    "__docId__": 100,
     "kind": "testFile",
     "name": "test/application_test.js",
-    "content": "'use strict';\r\n\r\nconst {expect} = require('chai');\r\nconst {Application, Server} = require('../lib');\r\n\r\n/**\r\n * @test {Application}\r\n */\r\ndescribe('Application', () => {\r\n\r\n  /**\r\n   * @test {Application#debug}\r\n   */\r\n  describe('#debug', () => {\r\n    it('should be `false` in production environment', () => {\r\n      process.env.NODE_ENV = 'production';\r\n      expect((new Application).debug).to.be.false;\r\n    });\r\n\r\n    it('should be `true` in development environment', () => {\r\n      process.env.NODE_ENV = 'development';\r\n      expect((new Application).debug).to.be.true;\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#env}\r\n   */\r\n  describe('#env', () => {\r\n    it('should be \"development\" if the NODE_ENV environment variable is not set', () => {\r\n      delete process.env.NODE_ENV;\r\n      expect((new Application).env).to.equal('development');\r\n    });\r\n\r\n    it('should equal the value of `NODE_ENV` environment variable when it is set', () => {\r\n      process.env.NODE_ENV = 'production';\r\n      expect((new Application).env).to.equal('production');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#init}\r\n   */\r\n  describe('#init()', () => {\r\n    it('should initialize the `servers` property from the command line arguments', done => {\r\n      let app = new Application;\r\n      app.init({port: 80, target: 3000}).subscribe(() => {\r\n        expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n        expect(app.servers[0].port).to.equal(80);\r\n      }, done, done);\r\n    });\r\n\r\n    it('should initialize the `servers` property from the JSON configuration', done => {\r\n      let app = new Application;\r\n      app.init({config: 'example/json/basic_standalone.json'}).subscribe(() => {\r\n        expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n        expect(app.servers[0].port).to.equal(80);\r\n      }, done, done);\r\n    });\r\n\r\n    it('should initialize the `servers` property from the YAML configuration', done => {\r\n      let app = new Application;\r\n      app.init({config: 'example/yaml/basic_standalone.yaml'}).subscribe(() => {\r\n        expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n        expect(app.servers[0].port).to.equal(80);\r\n      }, done, done);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#_parseConfig}\r\n   */\r\n  describe('#_parseConfig()', () => {\r\n    it('should throw an error if the configuration has an invalid format', done => {\r\n      (new Application)._parseConfig('\"FooBar\"').subscribe({\r\n        complete: () => done(new Error('Error not thrown.')),\r\n        error: () => done()\r\n      });\r\n    });\r\n\r\n    it('should throw an error if the parsed JSON configuration has no `routes` and no `target` properties', done => {\r\n      (new Application)._parseConfig('{\"port\": 80}').subscribe({\r\n        complete: () => done(new Error('Error not thrown.')),\r\n        error: () => done()\r\n      });\r\n    });\r\n\r\n    it('should throw an error if the parsed YAML configuration has no `routes` and no `target` properties', done => {\r\n      (new Application)._parseConfig('port: 80').subscribe({\r\n        complete: () => done(new Error('Error not thrown.')),\r\n        error: () => done()\r\n      });\r\n    });\r\n\r\n    it('should completes with an array if the parsed JSON configuration is valid', done => {\r\n      (new Application)._parseConfig('{\"port\": 80, \"target\": 3000}').subscribe(config => {\r\n        expect(config).to.be.an('array').and.have.lengthOf(1);\r\n        expect(config[0]).to.be.instanceof(Server);\r\n        expect(config[0].port).to.equal(80);\r\n      }, done, done);\r\n    });\r\n\r\n    it('should completes with an array if the parsed YAML configuration is valid', done => {\r\n      (new Application)._parseConfig('port: 80\\ntarget: 3000').subscribe(config => {\r\n        expect(config).to.be.an('array').and.have.lengthOf(1);\r\n        expect(config[0]).to.be.instanceof(Server);\r\n        expect(config[0].port).to.equal(80);\r\n      }, done, done);\r\n    });\r\n\r\n    it('should handle the loading of certificate files', done => {\r\n      let settings = `{\r\n        \"target\": 3000,\r\n        \"ssl\": {\r\n          \"cert\": \"test/fixtures/cert.pem\",\r\n          \"key\": \"test/fixtures/key.pem\"\r\n        }\r\n      }`;\r\n\r\n      (new Application)._parseConfig(settings).subscribe(config => {\r\n        expect(config).to.be.an('array').and.have.lengthOf(1);\r\n        expect(config[0]).to.be.instanceof(Server);\r\n\r\n        let cert = config[0]._options.ssl.cert;\r\n        expect(cert).to.be.instanceof(Buffer);\r\n        expect(cert.toString()).to.contain('-----BEGIN CERTIFICATE-----');\r\n\r\n        let key = config[0]._options.ssl.key;\r\n        expect(key).to.be.instanceof(Buffer);\r\n        expect(key.toString()).to.contain('-----BEGIN ENCRYPTED PRIVATE KEY-----');\r\n      }, done, done);\r\n    });\r\n  });\r\n});\r\n",
+    "content": "'use strict';\r\n\r\nconst {expect} = require('chai');\r\nconst {Application, Server} = require('../lib');\r\n\r\n/**\r\n * @test {Application}\r\n */\r\ndescribe('Application', () => {\r\n\r\n  /**\r\n   * @test {Application#debug}\r\n   */\r\n  describe('#debug', () => {\r\n    it('should be `false` in production environment', () => {\r\n      process.env.NODE_ENV = 'production';\r\n      expect((new Application).debug).to.be.false;\r\n    });\r\n\r\n    it('should be `true` in development environment', () => {\r\n      process.env.NODE_ENV = 'development';\r\n      expect((new Application).debug).to.be.true;\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#env}\r\n   */\r\n  describe('#env', () => {\r\n    it('should be \"development\" if the NODE_ENV environment variable is not set', () => {\r\n      delete process.env.NODE_ENV;\r\n      expect((new Application).env).to.equal('development');\r\n    });\r\n\r\n    it('should equal the value of `NODE_ENV` environment variable when it is set', () => {\r\n      process.env.NODE_ENV = 'production';\r\n      expect((new Application).env).to.equal('production');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#init}\r\n   */\r\n  describe('#init()', () => {\r\n    it('should initialize the `servers` property from the command line arguments', async () => {\r\n      let app = new Application;\r\n      await app.init({port: 80, target: 3000});\r\n      expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n      expect(app.servers[0].port).to.equal(80);\r\n    });\r\n\r\n    it('should initialize the `servers` property from the JSON configuration', async () => {\r\n      let app = new Application;\r\n      await app.init({config: 'example/json/basic_standalone.json'});\r\n      expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n      expect(app.servers[0].port).to.equal(80);\r\n    });\r\n\r\n    it('should initialize the `servers` property from the YAML configuration', async () => {\r\n      let app = new Application;\r\n      await app.init({config: 'example/yaml/basic_standalone.yaml'});\r\n      expect(app.servers).to.be.an('array').and.have.lengthOf(1);\r\n      expect(app.servers[0].port).to.equal(80);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Application#_parseConfig}\r\n   */\r\n  describe('#_parseConfig()', () => {\r\n    it('should throw an error if the configuration has an invalid format', async () => {\r\n      try {\r\n        await (new Application)._parseConfig('\"FooBar\"');\r\n        expect(true).to.not.be.ok;\r\n      }\r\n\r\n      catch (err) {\r\n        expect(true).to.be.ok;\r\n      }\r\n    });\r\n\r\n    it('should throw an error if the parsed JSON configuration has no `routes` and no `target` properties', async () => {\r\n      try {\r\n        await (new Application)._parseConfig('{\"port\": 80}');\r\n        expect(true).to.not.be.ok;\r\n      }\r\n\r\n      catch (err) {\r\n        expect(true).to.be.ok;\r\n      }\r\n    });\r\n\r\n    it('should throw an error if the parsed YAML configuration has no `routes` and no `target` properties', async () => {\r\n      try {\r\n        await (new Application)._parseConfig('port: 80');\r\n        expect(true).to.not.be.ok;\r\n      }\r\n\r\n      catch (err) {\r\n        expect(true).to.be.ok;\r\n      }\r\n    });\r\n\r\n    it('should completes with an array if the parsed JSON configuration is valid', async () => {\r\n      let config = await (new Application)._parseConfig('{\"port\": 80, \"target\": 3000}');\r\n      expect(config).to.be.an('array').and.have.lengthOf(1);\r\n      expect(config[0]).to.be.instanceof(Server);\r\n      expect(config[0].port).to.equal(80);\r\n    });\r\n\r\n    it('should completes with an array if the parsed YAML configuration is valid', async () => {\r\n      let config = await (new Application)._parseConfig('port: 80\\ntarget: 3000');\r\n      expect(config).to.be.an('array').and.have.lengthOf(1);\r\n      expect(config[0]).to.be.instanceof(Server);\r\n      expect(config[0].port).to.equal(80);\r\n    });\r\n\r\n    it('should handle the loading of certificate files', async () => {\r\n      let settings = `{\r\n        \"target\": 3000,\r\n        \"ssl\": {\r\n          \"cert\": \"test/fixtures/cert.pem\",\r\n          \"key\": \"test/fixtures/key.pem\"\r\n        }\r\n      }`;\r\n\r\n      let config = await (new Application)._parseConfig(settings);\r\n      expect(config).to.be.an('array').and.have.lengthOf(1);\r\n      expect(config[0]).to.be.instanceof(Server);\r\n\r\n      let cert = config[0]._options.ssl.cert;\r\n      expect(cert).to.be.instanceof(Buffer);\r\n      expect(cert.toString()).to.contain('-----BEGIN CERTIFICATE-----');\r\n\r\n      let key = config[0]._options.ssl.key;\r\n      expect(key).to.be.instanceof(Buffer);\r\n      expect(key.toString()).to.contain('-----BEGIN ENCRYPTED PRIVATE KEY-----');\r\n    });\r\n  });\r\n});\r\n",
     "static": true,
     "longname": "C:/repo/reverse-proxy.js/test/application_test.js",
     "access": null,
@@ -1840,7 +1721,7 @@
     "lineNumber": 1
   },
   {
-    "__docId__": 104,
+    "__docId__": 101,
     "kind": "test",
     "name": "describe0",
     "testId": 0,
@@ -1856,7 +1737,7 @@
     ]
   },
   {
-    "__docId__": 105,
+    "__docId__": 102,
     "kind": "test",
     "name": "describe1",
     "testId": 1,
@@ -1872,7 +1753,7 @@
     ]
   },
   {
-    "__docId__": 106,
+    "__docId__": 103,
     "kind": "test",
     "name": "it2",
     "testId": 2,
@@ -1885,7 +1766,7 @@
     "lineNumber": 15
   },
   {
-    "__docId__": 107,
+    "__docId__": 104,
     "kind": "test",
     "name": "it3",
     "testId": 3,
@@ -1898,7 +1779,7 @@
     "lineNumber": 20
   },
   {
-    "__docId__": 108,
+    "__docId__": 105,
     "kind": "test",
     "name": "describe4",
     "testId": 4,
@@ -1914,7 +1795,7 @@
     ]
   },
   {
-    "__docId__": 109,
+    "__docId__": 106,
     "kind": "test",
     "name": "it5",
     "testId": 5,
@@ -1927,7 +1808,7 @@
     "lineNumber": 30
   },
   {
-    "__docId__": 110,
+    "__docId__": 107,
     "kind": "test",
     "name": "it6",
     "testId": 6,
@@ -1940,7 +1821,7 @@
     "lineNumber": 35
   },
   {
-    "__docId__": 111,
+    "__docId__": 108,
     "kind": "test",
     "name": "describe7",
     "testId": 7,
@@ -1956,7 +1837,7 @@
     ]
   },
   {
-    "__docId__": 112,
+    "__docId__": 109,
     "kind": "test",
     "name": "it8",
     "testId": 8,
@@ -1969,7 +1850,7 @@
     "lineNumber": 45
   },
   {
-    "__docId__": 113,
+    "__docId__": 110,
     "kind": "test",
     "name": "it9",
     "testId": 9,
@@ -1979,10 +1860,10 @@
     "longname": "test/application_test.js~describe0.describe7.it9",
     "access": null,
     "description": "should initialize the `servers` property from the JSON configuration",
-    "lineNumber": 53
+    "lineNumber": 52
   },
   {
-    "__docId__": 114,
+    "__docId__": 111,
     "kind": "test",
     "name": "it10",
     "testId": 10,
@@ -1992,10 +1873,10 @@
     "longname": "test/application_test.js~describe0.describe7.it10",
     "access": null,
     "description": "should initialize the `servers` property from the YAML configuration",
-    "lineNumber": 61
+    "lineNumber": 59
   },
   {
-    "__docId__": 115,
+    "__docId__": 112,
     "kind": "test",
     "name": "describe11",
     "testId": 11,
@@ -2005,13 +1886,13 @@
     "longname": "test/application_test.js~describe0.describe11",
     "access": null,
     "description": "#_parseConfig()",
-    "lineNumber": 73,
+    "lineNumber": 70,
     "testTargets": [
       "Application#_parseConfig"
     ]
   },
   {
-    "__docId__": 116,
+    "__docId__": 113,
     "kind": "test",
     "name": "it12",
     "testId": 12,
@@ -2021,10 +1902,10 @@
     "longname": "test/application_test.js~describe0.describe11.it12",
     "access": null,
     "description": "should throw an error if the configuration has an invalid format",
-    "lineNumber": 74
+    "lineNumber": 71
   },
   {
-    "__docId__": 117,
+    "__docId__": 114,
     "kind": "test",
     "name": "it13",
     "testId": 13,
@@ -2034,10 +1915,10 @@
     "longname": "test/application_test.js~describe0.describe11.it13",
     "access": null,
     "description": "should throw an error if the parsed JSON configuration has no `routes` and no `target` properties",
-    "lineNumber": 81
+    "lineNumber": 82
   },
   {
-    "__docId__": 118,
+    "__docId__": 115,
     "kind": "test",
     "name": "it14",
     "testId": 14,
@@ -2047,10 +1928,10 @@
     "longname": "test/application_test.js~describe0.describe11.it14",
     "access": null,
     "description": "should throw an error if the parsed YAML configuration has no `routes` and no `target` properties",
-    "lineNumber": 88
+    "lineNumber": 93
   },
   {
-    "__docId__": 119,
+    "__docId__": 116,
     "kind": "test",
     "name": "it15",
     "testId": 15,
@@ -2060,10 +1941,10 @@
     "longname": "test/application_test.js~describe0.describe11.it15",
     "access": null,
     "description": "should completes with an array if the parsed JSON configuration is valid",
-    "lineNumber": 95
+    "lineNumber": 104
   },
   {
-    "__docId__": 120,
+    "__docId__": 117,
     "kind": "test",
     "name": "it16",
     "testId": 16,
@@ -2073,10 +1954,10 @@
     "longname": "test/application_test.js~describe0.describe11.it16",
     "access": null,
     "description": "should completes with an array if the parsed YAML configuration is valid",
-    "lineNumber": 103
+    "lineNumber": 111
   },
   {
-    "__docId__": 121,
+    "__docId__": 118,
     "kind": "test",
     "name": "it17",
     "testId": 17,
@@ -2086,13 +1967,13 @@
     "longname": "test/application_test.js~describe0.describe11.it17",
     "access": null,
     "description": "should handle the loading of certificate files",
-    "lineNumber": 111
+    "lineNumber": 118
   },
   {
-    "__docId__": 122,
+    "__docId__": 119,
     "kind": "testFile",
     "name": "test/server_test.js",
-    "content": "'use strict';\r\n\r\nconst {expect} = require('chai');\r\nconst {STATUS_CODES} = require('http');\r\nconst {Observable, Subject} = require('rxjs');\r\nconst {Server} = require('../lib');\r\n\r\n/**\r\n * @test {Server}\r\n */\r\ndescribe('Server', () => {\r\n\r\n  /**\r\n   * @test {Server#address}\r\n   */\r\n  describe('#address', () => {\r\n    it('should have an \"any IPv4\" address as the default address', () => {\r\n      expect((new Server).address).to.equal(Server.DEFAULT_ADDRESS);\r\n    });\r\n\r\n    it('should have the same host as the specified one', () => {\r\n      expect(new Server({address: 'localhost'}).address).to.equal('localhost');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#listening}\r\n   */\r\n  describe('#listening', () => {\r\n    it('should return whether the server is listening', done => {\r\n      let server = new Server({address: '127.0.0.1', port: 0});\r\n      expect(server.listening).to.be.false;\r\n\r\n      server.listen()\r\n        .do(() => expect(server.listening).to.be.true)\r\n        .mergeMap(() => server.close())\r\n        .do(() => expect(server.listening).to.be.false)\r\n        .subscribe(null, done, done);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#onClose}\r\n   */\r\n  describe('#onClose', () => {\r\n    it('should return an `Observable` instead of the underlying `Subject`', () => {\r\n      let stream = new Server().onClose;\r\n      expect(stream).to.be.instanceof(Observable);\r\n      expect(stream).to.not.be.instanceof(Subject);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#onError}\r\n   */\r\n  describe('#onError', () => {\r\n    it('should return an `Observable` instead of the underlying `Subject`', () => {\r\n      let stream = new Server().onError;\r\n      expect(stream).to.be.instanceof(Observable);\r\n      expect(stream).to.not.be.instanceof(Subject);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#onListening}\r\n   */\r\n  describe('#onListening', () => {\r\n    it('should return an `Observable` instead of the underlying `Subject`', () => {\r\n      let stream = new Server().onListening;\r\n      expect(stream).to.be.instanceof(Observable);\r\n      expect(stream).to.not.be.instanceof(Subject);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#onRequest}\r\n   */\r\n  describe('#onRequest', () => {\r\n    it('should return an `Observable` instead of the underlying `Subject`', () => {\r\n      let stream = new Server().onRequest;\r\n      expect(stream).to.be.instanceof(Observable);\r\n      expect(stream).to.not.be.instanceof(Subject);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#port}\r\n   */\r\n  describe('#port', () => {\r\n    it('should have 3000 as the default port', () => {\r\n      expect((new Server).port).to.equal(Server.DEFAULT_PORT);\r\n    });\r\n\r\n    it('should have the same port as the specified one', () => {\r\n      expect(new Server({port: 8080}).port).to.equal(8080);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#routes}\r\n   */\r\n  describe('#routes', () => {\r\n    it('should be empty by default', () => {\r\n      expect((new Server).routes.size).to.equal(0);\r\n    });\r\n\r\n    it('should create a default route if a target is specified', () => {\r\n      let routes = new Server({target: 9000}).routes;\r\n      expect(routes.size).to.equal(1);\r\n      expect(routes.get('*')).to.be.an('object').and.have.property('uri');\r\n    });\r\n\r\n    it('should normalize the specified targets', () => {\r\n      let routes = new Server({routes: {'belin.io': 9000}}).routes;\r\n      expect(routes.get('belin.io')).to.be.an('object')\r\n        .and.have.property('uri').that.equal('http://127.0.0.1:9000');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_getHostname}\r\n   */\r\n  describe('#_getHostname()', () => {\r\n    it('it should return \"*\" if there is no \"Host\" header in the request', () => {\r\n      expect((new Server)._getHostname({headers: {}})).to.equal('*');\r\n    });\r\n\r\n    it('it should return the \"Host\" header found in the request, without the port number', () => {\r\n      expect((new Server)._getHostname({headers: {host: 'belin.io:8080'}})).to.equal('belin.io');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_normalizeRoute}\r\n   */\r\n  describe('#_normalizeRoute()', () => {\r\n    it('it should normalize a port on the local host', () => {\r\n      expect((new Server)._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\r\n      expect((new Server)._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\r\n    });\r\n\r\n    it('it should normalize an authority', () => {\r\n      expect((new Server)._normalizeRoute('domain.com:8080')).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\r\n      expect((new Server)._normalizeRoute({uri: 'domain.com:8080'})).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\r\n    });\r\n\r\n    it('it should normalize an origin', () => {\r\n      expect((new Server)._normalizeRoute('https://domain.com:8080')).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\r\n      expect((new Server)._normalizeRoute({uri: 'https://domain.com:8080'})).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\r\n    });\r\n\r\n    it('it should normalize the HTTP headers', () => {\r\n      let headers = {'X-Header': 'X-Value'};\r\n      expect((new Server)._normalizeRoute({headers, uri: 'https://domain.com:8080'}))\r\n        .to.deep.equal({headers: {'x-header': 'X-Value'}, uri: 'https://domain.com:8080'});\r\n    });\r\n\r\n    it('it should throw an error if the route has an invalid format', () => {\r\n      expect(() => (new Server)._normalizeRoute([3000])).to.throw();\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_sendStatus}\r\n   */\r\n  describe('#_sendStatus()', () => {\r\n    const Response = class {\r\n      /* eslint-disable require-jsdoc */\r\n      constructor() {\r\n        this.body = '';\r\n        this.status = 200;\r\n      }\r\n      end(message) { this.body = message; }\r\n      writeHead(status) { this.status = status; }\r\n      /* eslint-enable require-jsdoc */\r\n    };\r\n\r\n    it('it should set the response status', () => {\r\n      let response = new Response;\r\n      expect(response.status).to.equal(200);\r\n      (new Server)._sendStatus(response, 404);\r\n      expect(response.status).to.equal(404);\r\n    });\r\n\r\n    it('it should set the response body', () => {\r\n      let response = new Response;\r\n      expect(response.body).to.be.empty;\r\n      (new Server)._sendStatus(response, 404);\r\n      expect(response.body).to.equal(STATUS_CODES[404]);\r\n    });\r\n  });\r\n});\r\n",
+    "content": "'use strict';\r\n\r\nconst {expect} = require('chai');\r\nconst {STATUS_CODES} = require('http');\r\nconst {Server} = require('../lib');\r\n\r\n/**\r\n * @test {Server}\r\n */\r\ndescribe('Server', () => {\r\n\r\n  /**\r\n   * @test {Server#address}\r\n   */\r\n  describe('#address', () => {\r\n    it('should have an \"any IPv4\" address as the default address', () => {\r\n      expect((new Server).address).to.equal(Server.DEFAULT_ADDRESS);\r\n    });\r\n\r\n    it('should have the same host as the specified one', () => {\r\n      expect(new Server({address: 'localhost'}).address).to.equal('localhost');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#listening}\r\n   */\r\n  describe('#listening', () => {\r\n    it('should return whether the server is listening', async () => {\r\n      let server = new Server({address: '127.0.0.1', port: 0});\r\n      expect(server.listening).to.be.false;\r\n\r\n      await server.listen();\r\n      expect(server.listening).to.be.true;\r\n\r\n      await server.close();\r\n      expect(server.listening).to.be.false;\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#port}\r\n   */\r\n  describe('#port', () => {\r\n    it('should have 3000 as the default port', () => {\r\n      expect((new Server).port).to.equal(Server.DEFAULT_PORT);\r\n    });\r\n\r\n    it('should have the same port as the specified one', () => {\r\n      expect(new Server({port: 8080}).port).to.equal(8080);\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#routes}\r\n   */\r\n  describe('#routes', () => {\r\n    it('should be empty by default', () => {\r\n      expect((new Server).routes.size).to.equal(0);\r\n    });\r\n\r\n    it('should create a default route if a target is specified', () => {\r\n      let routes = new Server({target: 9000}).routes;\r\n      expect(routes.size).to.equal(1);\r\n      expect(routes.get('*')).to.be.an('object').and.have.property('uri');\r\n    });\r\n\r\n    it('should normalize the specified targets', () => {\r\n      let routes = new Server({routes: {'belin.io': 9000}}).routes;\r\n      expect(routes.get('belin.io')).to.be.an('object')\r\n        .and.have.property('uri').that.equal('http://127.0.0.1:9000');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_getHostname}\r\n   */\r\n  describe('#_getHostname()', () => {\r\n    it('it should return \"*\" if there is no \"Host\" header in the request', () => {\r\n      expect((new Server)._getHostname({headers: {}})).to.equal('*');\r\n    });\r\n\r\n    it('it should return the \"Host\" header found in the request, without the port number', () => {\r\n      expect((new Server)._getHostname({headers: {host: 'belin.io:8080'}})).to.equal('belin.io');\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_normalizeRoute}\r\n   */\r\n  describe('#_normalizeRoute()', () => {\r\n    it('it should normalize a port on the local host', () => {\r\n      expect((new Server)._normalizeRoute(3000)).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\r\n      expect((new Server)._normalizeRoute({uri: 3000})).to.deep.equal({headers: {}, uri: 'http://127.0.0.1:3000'});\r\n    });\r\n\r\n    it('it should normalize an authority', () => {\r\n      expect((new Server)._normalizeRoute('domain.com:8080')).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\r\n      expect((new Server)._normalizeRoute({uri: 'domain.com:8080'})).to.deep.equal({headers: {}, uri: 'http://domain.com:8080'});\r\n    });\r\n\r\n    it('it should normalize an origin', () => {\r\n      expect((new Server)._normalizeRoute('https://domain.com:8080')).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\r\n      expect((new Server)._normalizeRoute({uri: 'https://domain.com:8080'})).to.deep.equal({headers: {}, uri: 'https://domain.com:8080'});\r\n    });\r\n\r\n    it('it should normalize the HTTP headers', () => {\r\n      let headers = {'X-Header': 'X-Value'};\r\n      expect((new Server)._normalizeRoute({headers, uri: 'https://domain.com:8080'}))\r\n        .to.deep.equal({headers: {'x-header': 'X-Value'}, uri: 'https://domain.com:8080'});\r\n    });\r\n\r\n    it('it should throw an error if the route has an invalid format', () => {\r\n      expect(() => (new Server)._normalizeRoute([3000])).to.throw();\r\n    });\r\n  });\r\n\r\n  /**\r\n   * @test {Server#_sendStatus}\r\n   */\r\n  describe('#_sendStatus()', () => {\r\n    const Response = class {\r\n      /* eslint-disable require-jsdoc */\r\n      constructor() {\r\n        this.body = '';\r\n        this.status = 200;\r\n      }\r\n      end(message) { this.body = message; }\r\n      writeHead(status) { this.status = status; }\r\n      /* eslint-enable require-jsdoc */\r\n    };\r\n\r\n    it('it should set the response status', () => {\r\n      let response = new Response;\r\n      expect(response.status).to.equal(200);\r\n      (new Server)._sendStatus(response, 404);\r\n      expect(response.status).to.equal(404);\r\n    });\r\n\r\n    it('it should set the response body', () => {\r\n      let response = new Response;\r\n      expect(response.body).to.be.empty;\r\n      (new Server)._sendStatus(response, 404);\r\n      expect(response.body).to.equal(STATUS_CODES[404]);\r\n    });\r\n  });\r\n});\r\n",
     "static": true,
     "longname": "C:/repo/reverse-proxy.js/test/server_test.js",
     "access": null,
@@ -2100,7 +1981,7 @@
     "lineNumber": 1
   },
   {
-    "__docId__": 123,
+    "__docId__": 120,
     "kind": "test",
     "name": "describe18",
     "testId": 18,
@@ -2110,13 +1991,13 @@
     "longname": "test/server_test.js~describe18",
     "access": null,
     "description": "Server",
-    "lineNumber": 11,
+    "lineNumber": 10,
     "testTargets": [
       "Server"
     ]
   },
   {
-    "__docId__": 124,
+    "__docId__": 121,
     "kind": "test",
     "name": "describe19",
     "testId": 19,
@@ -2126,13 +2007,13 @@
     "longname": "test/server_test.js~describe18.describe19",
     "access": null,
     "description": "#address",
-    "lineNumber": 16,
+    "lineNumber": 15,
     "testTargets": [
       "Server#address"
     ]
   },
   {
-    "__docId__": 125,
+    "__docId__": 122,
     "kind": "test",
     "name": "it20",
     "testId": 20,
@@ -2142,10 +2023,10 @@
     "longname": "test/server_test.js~describe18.describe19.it20",
     "access": null,
     "description": "should have an \"any IPv4\" address as the default address",
-    "lineNumber": 17
+    "lineNumber": 16
   },
   {
-    "__docId__": 126,
+    "__docId__": 123,
     "kind": "test",
     "name": "it21",
     "testId": 21,
@@ -2155,10 +2036,10 @@
     "longname": "test/server_test.js~describe18.describe19.it21",
     "access": null,
     "description": "should have the same host as the specified one",
-    "lineNumber": 21
+    "lineNumber": 20
   },
   {
-    "__docId__": 127,
+    "__docId__": 124,
     "kind": "test",
     "name": "describe22",
     "testId": 22,
@@ -2168,13 +2049,13 @@
     "longname": "test/server_test.js~describe18.describe22",
     "access": null,
     "description": "#listening",
-    "lineNumber": 29,
+    "lineNumber": 28,
     "testTargets": [
       "Server#listening"
     ]
   },
   {
-    "__docId__": 128,
+    "__docId__": 125,
     "kind": "test",
     "name": "it23",
     "testId": 23,
@@ -2184,10 +2065,10 @@
     "longname": "test/server_test.js~describe18.describe22.it23",
     "access": null,
     "description": "should return whether the server is listening",
-    "lineNumber": 30
+    "lineNumber": 29
   },
   {
-    "__docId__": 129,
+    "__docId__": 126,
     "kind": "test",
     "name": "describe24",
     "testId": 24,
@@ -2196,14 +2077,14 @@
     "static": true,
     "longname": "test/server_test.js~describe18.describe24",
     "access": null,
-    "description": "#onClose",
-    "lineNumber": 45,
+    "description": "#port",
+    "lineNumber": 44,
     "testTargets": [
-      "Server#onClose"
+      "Server#port"
     ]
   },
   {
-    "__docId__": 130,
+    "__docId__": 127,
     "kind": "test",
     "name": "it25",
     "testId": 25,
@@ -2212,356 +2093,240 @@
     "static": true,
     "longname": "test/server_test.js~describe18.describe24.it25",
     "access": null,
-    "description": "should return an `Observable` instead of the underlying `Subject`",
-    "lineNumber": 46
-  },
-  {
-    "__docId__": 131,
-    "kind": "test",
-    "name": "describe26",
-    "testId": 26,
-    "memberof": "test/server_test.js~describe18",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe26",
-    "access": null,
-    "description": "#onError",
-    "lineNumber": 56,
-    "testTargets": [
-      "Server#onError"
-    ]
-  },
-  {
-    "__docId__": 132,
-    "kind": "test",
-    "name": "it27",
-    "testId": 27,
-    "memberof": "test/server_test.js~describe18.describe26",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe26.it27",
-    "access": null,
-    "description": "should return an `Observable` instead of the underlying `Subject`",
-    "lineNumber": 57
-  },
-  {
-    "__docId__": 133,
-    "kind": "test",
-    "name": "describe28",
-    "testId": 28,
-    "memberof": "test/server_test.js~describe18",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe28",
-    "access": null,
-    "description": "#onListening",
-    "lineNumber": 67,
-    "testTargets": [
-      "Server#onListening"
-    ]
-  },
-  {
-    "__docId__": 134,
-    "kind": "test",
-    "name": "it29",
-    "testId": 29,
-    "memberof": "test/server_test.js~describe18.describe28",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe28.it29",
-    "access": null,
-    "description": "should return an `Observable` instead of the underlying `Subject`",
-    "lineNumber": 68
-  },
-  {
-    "__docId__": 135,
-    "kind": "test",
-    "name": "describe30",
-    "testId": 30,
-    "memberof": "test/server_test.js~describe18",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe30",
-    "access": null,
-    "description": "#onRequest",
-    "lineNumber": 78,
-    "testTargets": [
-      "Server#onRequest"
-    ]
-  },
-  {
-    "__docId__": 136,
-    "kind": "test",
-    "name": "it31",
-    "testId": 31,
-    "memberof": "test/server_test.js~describe18.describe30",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe30.it31",
-    "access": null,
-    "description": "should return an `Observable` instead of the underlying `Subject`",
-    "lineNumber": 79
-  },
-  {
-    "__docId__": 137,
-    "kind": "test",
-    "name": "describe32",
-    "testId": 32,
-    "memberof": "test/server_test.js~describe18",
-    "testDepth": 1,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe32",
-    "access": null,
-    "description": "#port",
-    "lineNumber": 89,
-    "testTargets": [
-      "Server#port"
-    ]
-  },
-  {
-    "__docId__": 138,
-    "kind": "test",
-    "name": "it33",
-    "testId": 33,
-    "memberof": "test/server_test.js~describe18.describe32",
-    "testDepth": 2,
-    "static": true,
-    "longname": "test/server_test.js~describe18.describe32.it33",
-    "access": null,
     "description": "should have 3000 as the default port",
-    "lineNumber": 90
+    "lineNumber": 45
   },
   {
-    "__docId__": 139,
+    "__docId__": 128,
     "kind": "test",
-    "name": "it34",
-    "testId": 34,
-    "memberof": "test/server_test.js~describe18.describe32",
+    "name": "it26",
+    "testId": 26,
+    "memberof": "test/server_test.js~describe18.describe24",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe32.it34",
+    "longname": "test/server_test.js~describe18.describe24.it26",
     "access": null,
     "description": "should have the same port as the specified one",
-    "lineNumber": 94
+    "lineNumber": 49
   },
   {
-    "__docId__": 140,
+    "__docId__": 129,
     "kind": "test",
-    "name": "describe35",
-    "testId": 35,
+    "name": "describe27",
+    "testId": 27,
     "memberof": "test/server_test.js~describe18",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe35",
+    "longname": "test/server_test.js~describe18.describe27",
     "access": null,
     "description": "#routes",
-    "lineNumber": 102,
+    "lineNumber": 57,
     "testTargets": [
       "Server#routes"
     ]
   },
   {
-    "__docId__": 141,
+    "__docId__": 130,
     "kind": "test",
-    "name": "it36",
-    "testId": 36,
-    "memberof": "test/server_test.js~describe18.describe35",
+    "name": "it28",
+    "testId": 28,
+    "memberof": "test/server_test.js~describe18.describe27",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe35.it36",
+    "longname": "test/server_test.js~describe18.describe27.it28",
     "access": null,
     "description": "should be empty by default",
-    "lineNumber": 103
+    "lineNumber": 58
   },
   {
-    "__docId__": 142,
+    "__docId__": 131,
     "kind": "test",
-    "name": "it37",
-    "testId": 37,
-    "memberof": "test/server_test.js~describe18.describe35",
+    "name": "it29",
+    "testId": 29,
+    "memberof": "test/server_test.js~describe18.describe27",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe35.it37",
+    "longname": "test/server_test.js~describe18.describe27.it29",
     "access": null,
     "description": "should create a default route if a target is specified",
-    "lineNumber": 107
+    "lineNumber": 62
   },
   {
-    "__docId__": 143,
+    "__docId__": 132,
     "kind": "test",
-    "name": "it38",
-    "testId": 38,
-    "memberof": "test/server_test.js~describe18.describe35",
+    "name": "it30",
+    "testId": 30,
+    "memberof": "test/server_test.js~describe18.describe27",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe35.it38",
+    "longname": "test/server_test.js~describe18.describe27.it30",
     "access": null,
     "description": "should normalize the specified targets",
-    "lineNumber": 113
+    "lineNumber": 68
   },
   {
-    "__docId__": 144,
+    "__docId__": 133,
     "kind": "test",
-    "name": "describe39",
-    "testId": 39,
+    "name": "describe31",
+    "testId": 31,
     "memberof": "test/server_test.js~describe18",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe39",
+    "longname": "test/server_test.js~describe18.describe31",
     "access": null,
     "description": "#_getHostname()",
-    "lineNumber": 123,
+    "lineNumber": 78,
     "testTargets": [
       "Server#_getHostname"
     ]
   },
   {
-    "__docId__": 145,
+    "__docId__": 134,
     "kind": "test",
-    "name": "it40",
-    "testId": 40,
-    "memberof": "test/server_test.js~describe18.describe39",
+    "name": "it32",
+    "testId": 32,
+    "memberof": "test/server_test.js~describe18.describe31",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe39.it40",
+    "longname": "test/server_test.js~describe18.describe31.it32",
     "access": null,
     "description": "it should return \"*\" if there is no \"Host\" header in the request",
-    "lineNumber": 124
+    "lineNumber": 79
   },
   {
-    "__docId__": 146,
+    "__docId__": 135,
     "kind": "test",
-    "name": "it41",
-    "testId": 41,
-    "memberof": "test/server_test.js~describe18.describe39",
+    "name": "it33",
+    "testId": 33,
+    "memberof": "test/server_test.js~describe18.describe31",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe39.it41",
+    "longname": "test/server_test.js~describe18.describe31.it33",
     "access": null,
     "description": "it should return the \"Host\" header found in the request, without the port number",
-    "lineNumber": 128
+    "lineNumber": 83
   },
   {
-    "__docId__": 147,
+    "__docId__": 136,
     "kind": "test",
-    "name": "describe42",
-    "testId": 42,
+    "name": "describe34",
+    "testId": 34,
     "memberof": "test/server_test.js~describe18",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42",
+    "longname": "test/server_test.js~describe18.describe34",
     "access": null,
     "description": "#_normalizeRoute()",
-    "lineNumber": 136,
+    "lineNumber": 91,
     "testTargets": [
       "Server#_normalizeRoute"
     ]
   },
   {
-    "__docId__": 148,
+    "__docId__": 137,
     "kind": "test",
-    "name": "it43",
-    "testId": 43,
-    "memberof": "test/server_test.js~describe18.describe42",
+    "name": "it35",
+    "testId": 35,
+    "memberof": "test/server_test.js~describe18.describe34",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42.it43",
+    "longname": "test/server_test.js~describe18.describe34.it35",
     "access": null,
     "description": "it should normalize a port on the local host",
-    "lineNumber": 137
+    "lineNumber": 92
   },
   {
-    "__docId__": 149,
+    "__docId__": 138,
     "kind": "test",
-    "name": "it44",
-    "testId": 44,
-    "memberof": "test/server_test.js~describe18.describe42",
+    "name": "it36",
+    "testId": 36,
+    "memberof": "test/server_test.js~describe18.describe34",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42.it44",
+    "longname": "test/server_test.js~describe18.describe34.it36",
     "access": null,
     "description": "it should normalize an authority",
-    "lineNumber": 142
+    "lineNumber": 97
   },
   {
-    "__docId__": 150,
+    "__docId__": 139,
     "kind": "test",
-    "name": "it45",
-    "testId": 45,
-    "memberof": "test/server_test.js~describe18.describe42",
+    "name": "it37",
+    "testId": 37,
+    "memberof": "test/server_test.js~describe18.describe34",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42.it45",
+    "longname": "test/server_test.js~describe18.describe34.it37",
     "access": null,
     "description": "it should normalize an origin",
-    "lineNumber": 147
+    "lineNumber": 102
   },
   {
-    "__docId__": 151,
+    "__docId__": 140,
     "kind": "test",
-    "name": "it46",
-    "testId": 46,
-    "memberof": "test/server_test.js~describe18.describe42",
+    "name": "it38",
+    "testId": 38,
+    "memberof": "test/server_test.js~describe18.describe34",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42.it46",
+    "longname": "test/server_test.js~describe18.describe34.it38",
     "access": null,
     "description": "it should normalize the HTTP headers",
-    "lineNumber": 152
+    "lineNumber": 107
   },
   {
-    "__docId__": 152,
+    "__docId__": 141,
     "kind": "test",
-    "name": "it47",
-    "testId": 47,
-    "memberof": "test/server_test.js~describe18.describe42",
+    "name": "it39",
+    "testId": 39,
+    "memberof": "test/server_test.js~describe18.describe34",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe42.it47",
+    "longname": "test/server_test.js~describe18.describe34.it39",
     "access": null,
     "description": "it should throw an error if the route has an invalid format",
-    "lineNumber": 158
+    "lineNumber": 113
   },
   {
-    "__docId__": 153,
+    "__docId__": 142,
     "kind": "test",
-    "name": "describe48",
-    "testId": 48,
+    "name": "describe40",
+    "testId": 40,
     "memberof": "test/server_test.js~describe18",
     "testDepth": 1,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe48",
+    "longname": "test/server_test.js~describe18.describe40",
     "access": null,
     "description": "#_sendStatus()",
-    "lineNumber": 166,
+    "lineNumber": 121,
     "testTargets": [
       "Server#_sendStatus"
     ]
   },
   {
-    "__docId__": 154,
+    "__docId__": 143,
     "kind": "test",
-    "name": "it49",
-    "testId": 49,
-    "memberof": "test/server_test.js~describe18.describe48",
+    "name": "it41",
+    "testId": 41,
+    "memberof": "test/server_test.js~describe18.describe40",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe48.it49",
+    "longname": "test/server_test.js~describe18.describe40.it41",
     "access": null,
     "description": "it should set the response status",
-    "lineNumber": 178
+    "lineNumber": 133
   },
   {
-    "__docId__": 155,
+    "__docId__": 144,
     "kind": "test",
-    "name": "it50",
-    "testId": 50,
-    "memberof": "test/server_test.js~describe18.describe48",
+    "name": "it42",
+    "testId": 42,
+    "memberof": "test/server_test.js~describe18.describe40",
     "testDepth": 2,
     "static": true,
-    "longname": "test/server_test.js~describe18.describe48.it50",
+    "longname": "test/server_test.js~describe18.describe40.it42",
     "access": null,
     "description": "it should set the response body",
-    "lineNumber": 185
+    "lineNumber": 140
   }
 ]

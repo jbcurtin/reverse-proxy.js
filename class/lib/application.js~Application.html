@@ -8,7 +8,7 @@
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
   <script src="script/manual.js"></script>
-<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
+<meta name="description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
@@ -31,18 +31,19 @@
     
   <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EventEmitter">EventEmitter</a></span></span></li>
 </ul>
 </div>
 </nav>
 
 <div class="content" data-ice="content"><div class="header-notice">
-  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Application} from &apos;<span><a href="file/lib/application.js.html#lineNumber15">@cedx/reverse-proxy/lib/application.js</a></span>&apos;</code></pre></div>
+  <div data-ice="importPath" class="import-path"><pre class="prettyprint"><code data-ice="importPathCode">import {Application} from &apos;<span><a href="file/lib/application.js.html#lineNumber14">@cedx/reverse-proxy/lib/application.js</a></span>&apos;</code></pre></div>
   <span data-ice="access">public</span>
   <span data-ice="kind">class</span>
   
   
   
-  <span data-ice="source">| <span><a href="file/lib/application.js.html#lineNumber15">source</a></span></span>
+  <span data-ice="source">| <span><a href="file/lib/application.js.html#lineNumber14">source</a></span></span>
 </div>
 
 <div class="self-detail detail">
@@ -172,6 +173,35 @@
           
           
           
+          <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-get-[Symbol.toStringTag]">[Symbol.toStringTag]</a></span></span><span class="code" data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+        </p>
+      </div>
+      <div>
+        
+        
+        <div data-ice="description"><p>The class name.</p>
+</div>
+      </div>
+    </td>
+    <td>
+      
+      
+    </td>
+  </tr>
+<tr data-ice="target">
+    <td>
+      <span class="access" data-ice="access">public</span>
+      
+      <span class="kind" data-ice="kind">get</span>
+      
+      <span class="override" data-ice="override"></span>
+    </td>
+    <td>
+      <div>
+        <p>
+          
+          
+          
           <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-get-debug">debug</a></span></span><span class="code" data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></span></span>
         </p>
       </div>
@@ -264,9 +294,9 @@
       <div>
         <p>
           
+          <span data-ice="async">async</span>
           
-          
-          <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-method-init">init</a></span></span><span class="code" data-ice="signature">(args: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>): <span>Observable</span></span>
+          <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-method-init">init</a></span></span><span class="code" data-ice="signature">(args: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>)</span>
         </p>
       </div>
       <div>
@@ -293,9 +323,9 @@
       <div>
         <p>
           
+          <span data-ice="async">async</span>
           
-          
-          <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-method-run">run</a></span></span><span class="code" data-ice="signature">(): <span>Observable</span></span>
+          <span class="code" data-ice="name"><span><a href="class/lib/application.js~Application.html#instance-method-run">run</a></span></span><span class="code" data-ice="signature">()</span>
         </p>
       </div>
       <div>
@@ -330,7 +360,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber21">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber20">source</a></span></span>
     </span>
   </h3>
 
@@ -378,7 +408,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber28">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber27">source</a></span></span>
     </span>
   </h3>
 
@@ -414,6 +444,50 @@
 <div data-ice="memberDetails"><h2 data-ice="title">Public Members</h2>
 
 <div class="detail" data-ice="detail">
+  <h3 data-ice="anchor" id="instance-get-[Symbol.toStringTag]">
+    <span class="access" data-ice="access">public</span>
+    
+    <span class="kind" data-ice="kind">get</span>
+    
+    
+    
+    <span class="code" data-ice="name">[Symbol.toStringTag]</span><span class="code" data-ice="signature">: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></span></span>
+    <span class="right-info">
+      
+      
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber40">source</a></span></span>
+    </span>
+  </h3>
+
+  
+  
+  
+  <div data-ice="description"><p>The class name.</p>
+</div>
+
+  
+
+  <div data-ice="properties">
+</div>
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+</div>
+<div class="detail" data-ice="detail">
   <h3 data-ice="anchor" id="instance-get-debug">
     <span class="access" data-ice="access">public</span>
     
@@ -425,7 +499,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber41">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber48">source</a></span></span>
     </span>
   </h3>
 
@@ -475,7 +549,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber49">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber56">source</a></span></span>
     </span>
   </h3>
 
@@ -525,7 +599,7 @@
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber34">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber33">source</a></span></span>
     </span>
   </h3>
 
@@ -566,13 +640,13 @@
     
     
     
+    <span data-ice="async">async</span>
     
-    
-    <span class="code" data-ice="name">init</span><span class="code" data-ice="signature">(args: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>): <span>Observable</span></span>
+    <span class="code" data-ice="name">init</span><span class="code" data-ice="signature">(args: <span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></span>)</span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber58">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber64">source</a></span></span>
     </span>
   </h3>
 
@@ -604,20 +678,7 @@
 </div>
 </div>
 
-  <div class="return-params" data-ice="returnParams">
-    <h4>Return:</h4>
-    <table>
-      <tbody>
-        <tr>
-          <td class="return-type code" data-ice="returnType"><span>Observable</span></td>
-          <td class="return-desc" data-ice="returnDescription"><p>Completes when the initialization is over.</p>
-</td>
-        </tr>
-      </tbody>
-    </table>
-    <div data-ice="returnProperties">
-</div>
-  </div>
+  
 
   
 
@@ -646,13 +707,13 @@
     
     
     
+    <span data-ice="async">async</span>
     
-    
-    <span class="code" data-ice="name">run</span><span class="code" data-ice="signature">(): <span>Observable</span></span>
+    <span class="code" data-ice="name">run</span><span class="code" data-ice="signature">()</span>
     <span class="right-info">
       
       
-      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber77">source</a></span></span>
+      <span data-ice="source"><span><a href="file/lib/application.js.html#lineNumber79">source</a></span></span>
     </span>
   </h3>
 
@@ -667,20 +728,7 @@
   <div data-ice="properties">
 </div>
 
-  <div class="return-params" data-ice="returnParams">
-    <h4>Return:</h4>
-    <table>
-      <tbody>
-        <tr>
-          <td class="return-type code" data-ice="returnType"><span>Observable</span></td>
-          <td class="return-desc" data-ice="returnDescription"><p>Completes when the reverse proxy has been started.</p>
-</td>
-        </tr>
-      </tbody>
-    </table>
-    <div data-ice="returnProperties">
-</div>
-  </div>
+  
 
   
 
@@ -701,7 +749,7 @@
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>

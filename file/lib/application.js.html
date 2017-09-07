@@ -8,7 +8,7 @@
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
   <script src="script/manual.js"></script>
-<meta name="description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Observable-based reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
+<meta name="description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."><meta property="twitter:card" content="summary"><meta property="twitter:title" content="Reverse-Proxy.js"><meta property="twitter:description" content="Simple reverse proxy server supporting WebSockets, implemented in JavaScript."></head>
 <body class="layout-container" data-ice="rootContainer">
 
 <header>
@@ -31,6 +31,7 @@
     
   <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/application.js~Application.html">Application</a></span></span></li>
 <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/lib/server.js~Server.html">Server</a></span></span></li>
+<li data-ice="doc"><span data-ice="kind" class="kind-variable">V</span><span data-ice="name"><span><a href="variable/index.html#static-variable-EventEmitter">EventEmitter</a></span></span></li>
 </ul>
 </div>
 </nav>
@@ -42,8 +43,7 @@ const program = require(&apos;commander&apos;);
 const {readFile} = require(&apos;fs&apos;);
 const {safeLoadAll: loadYAML} = require(&apos;js-yaml&apos;);
 const morgan = require(&apos;morgan&apos;);
-const {Observable} = require(&apos;rxjs&apos;);
-
+const {promisify} = require(&apos;util&apos;);
 const {version: pkgVersion} = require(&apos;../package.json&apos;);
 const {Server} = require(&apos;./server&apos;);
 
@@ -73,6 +73,14 @@ exports.Application = class Application {
   }
 
   /**
+   * The class name.
+   * @type {string}
+   */
+  get [Symbol.toStringTag]() {
+    return &apos;Application&apos;;
+  }
+
+  /**
    * Value indicating whether the application runs in debug mode.
    * @type {boolean}
    */
@@ -91,28 +99,23 @@ exports.Application = class Application {
   /**
    * Initializes the application.
    * @param {object} [args] The command line arguments.
-   * @return {Observable} Completes when the initialization is over.
    */
-  init(args = {}) {
-    let observable;
+  async init(args = {}) {
     if (typeof args.config == &apos;string&apos;) {
-      const loadConfig = Observable.bindNodeCallback(readFile);
-      observable = loadConfig(args.config, &apos;utf8&apos;).mergeMap(data =&gt; this._parseConfig(data));
+      const loadConfig = promisify(readFile);
+      this.servers = await this._parseConfig(await loadConfig(args.config, &apos;utf8&apos;));
     }
-    else observable = Observable.of([new Server({
+    else this.servers = [new Server({
       address: args.address,
       port: args.port,
       target: args.target
-    })]);
-
-    return observable.map(servers =&gt; this.servers = servers);
+    })];
   }
 
   /**
    * Runs the application.
-   * @return {Observable} Completes when the reverse proxy has been started.
    */
-  run() {
+  async run() {
     // Parse the command line arguments.
     const format = {
       asInteger: value =&gt; Number.parseInt(value, 10),
@@ -133,24 +136,21 @@ exports.Application = class Application {
     if (!program.config &amp;&amp; !program.target) program.help();
 
     // Start the proxy server.
-    return this.init(program)
-      .mergeMap(() =&gt; {
-        if (!this.servers.length) return Observable.throw(new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;));
-        return this._startServers();
-      })
-      .do({complete: () =&gt; {
-        if (program.user) this._setUser(program.user);
-      }});
+    await this.init(program);
+    if (!this.servers.length) throw new Error(&apos;Unable to find any configuration for the reverse proxy.&apos;);
+
+    await this._startServers();
+    if (program.user) this._setUser(program.user);
   }
 
   /**
    * Parses the specified configuration.
    * @param {string} data A string specifying the application configuration.
-   * @return {Observable&lt;Server[]&gt;} The server instances corresponding to the parsed configuration.
+   * @return {Promise&lt;Server[]&gt;} The server instances corresponding to the parsed configuration.
    */
-  _parseConfig(data) {
+  async _parseConfig(data) {
     data = data.trim();
-    if (!data.length) return Observable.throw(new Error(&apos;Invalid configuration data.&apos;));
+    if (!data.length) throw new Error(&apos;Invalid configuration data.&apos;);
 
     /* eslint-disable no-extra-parens */
     let config;
@@ -159,39 +159,30 @@ exports.Application = class Application {
     let isJson = (firstChar == &apos;[&apos; &amp;&amp; lastChar == &apos;]&apos;) || (firstChar == &apos;{&apos; &amp;&amp; lastChar == &apos;}&apos;);
     /* eslint-enable no-extra-parens */
 
-    try {
-      if (!isJson) {
-        config = [];
-        loadYAML(data, options =&gt; config.push(options));
-      }
-      else {
-        config = JSON.parse(data);
-        if (!Array.isArray(config)) config = [config];
-      }
-
-      if (!config.every(value =&gt; typeof value == &apos;object&apos; &amp;&amp; value))
-        throw new Error(&apos;Invalid configuration format.&apos;);
+    if (!isJson) {
+      config = [];
+      loadYAML(data, options =&gt; config.push(options));
+    }
+    else {
+      config = JSON.parse(data);
+      if (!Array.isArray(config)) config = [config];
     }
 
-    catch (err) {
-      return Observable.throw(err);
-    }
+    if (!config.every(value =&gt; typeof value == &apos;object&apos; &amp;&amp; value)) throw new Error(&apos;Invalid configuration format.&apos;);
 
-    const loadCert = Observable.bindNodeCallback(readFile);
-    return Observable.from(config).mergeMap(options =&gt; {
-      if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options))
-        return Observable.throw(new Error(&apos;You must provide at least a target or a routing table.&apos;));
-
+    const loadCert = promisify(readFile);
+    for (let options of config) {
+      if (!(&apos;routes&apos; in options) &amp;&amp; !(&apos;target&apos; in options)) throw new Error(&apos;You must provide at least a target or a routing table.&apos;);
       if (!(&apos;address&apos; in options)) options.address = program.address;
       if (!(&apos;port&apos; in options)) options.port = program.port;
-      if (!(&apos;ssl&apos; in options)) return Observable.of(new Server(options));
 
-      let keys = [&apos;ca&apos;, &apos;cert&apos;, &apos;key&apos;, &apos;pfx&apos;].filter(key =&gt; key in options.ssl);
-      let observables = keys.map(key =&gt; loadCert(options.ssl[key]));
-      return Observable.zip(...observables)
-        .do(certs =&gt; { for (let i = 0; i &lt; keys.length; i++) options.ssl[keys[i]] = certs[i]; })
-        .map(() =&gt; new Server(options));
-    }).toArray();
+      if (&apos;ssl&apos; in options) {
+        let keys = [&apos;ca&apos;, &apos;cert&apos;, &apos;key&apos;, &apos;pfx&apos;].filter(key =&gt; key in options.ssl);
+        for (let key of keys) options.ssl[key] = await loadCert(options.ssl[key]);
+      }
+    }
+
+    return config.map(options =&gt; new Server(options));
   }
 
   /**
@@ -209,17 +200,17 @@ exports.Application = class Application {
 
   /**
    * Starts the reverse proxy instances.
-   * @return {Observable} Completes when all servers have been started.
+   * @return {Promise} Completes when all servers have been started.
    */
-  _startServers() {
+  async _startServers() {
     let done = () =&gt; {};
     let logger = morgan(this.debug ? &apos;dev&apos; : Application.LOG_FORMAT);
 
-    return Observable.merge(...this.servers.map(server =&gt; {
-      server.onClose.subscribe(() =&gt; console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
-      server.onError.subscribe(error =&gt; console.error(this.debug ? error : error.message));
-      server.onListening.subscribe(() =&gt; console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
-      if (!program.silent) server.onRequest.subscribe(({request, response}) =&gt; logger(request, response, done));
+    return Promise.all(this.servers.map(server =&gt; {
+      server.on(&apos;close&apos;, () =&gt; console.log(`Reverse proxy instance on ${server.address}:${server.port} closed`));
+      server.on(&apos;error&apos;, err =&gt; console.error(this.debug ? err : err.message));
+      server.on(&apos;listening&apos;, () =&gt; console.log(`Reverse proxy instance listening on ${server.address}:${server.port}`));
+      if (!program.silent) server.on(&apos;request&apos;, (request, response) =&gt; logger(request, response, done));
 
       return server.listen();
     }));
@@ -230,7 +221,7 @@ exports.Application = class Application {
 </div>
 
 <footer class="footer">
-  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.1)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(1.0.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
 </footer>
 
 <script src="script/search_index.js"></script>
