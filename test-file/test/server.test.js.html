@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <base data-ice="baseUrl" href="../../">
-  <title data-ice="title">test/server_test.js | Reverse-Proxy.js</title>
+  <title data-ice="title">test/server.test.js | Reverse-Proxy.js</title>
   <link type="text/css" rel="stylesheet" href="css/style.css">
   <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
   <script src="script/prettify/prettify.js"></script>
@@ -36,7 +36,7 @@
 </div>
 </nav>
 
-<div class="content" data-ice="content"><h1 data-ice="title">test/server_test.js</h1>
+<div class="content" data-ice="content"><h1 data-ice="title">test/server.test.js</h1>
 <pre class="source-code line-number raw-source-code"><code class="prettyprint linenums" data-ice="content">&apos;use strict&apos;;
 
 const {expect} = require(&apos;chai&apos;);
@@ -46,7 +46,8 @@ const {Server} = require(&apos;../lib&apos;);
 /**
  * @test {Server}
  */
-describe(&apos;Server&apos;, () =&gt; {
+describe(&apos;Server&apos;, function() {
+  this.timeout(10000);
 
   /**
    * @test {Server#address}

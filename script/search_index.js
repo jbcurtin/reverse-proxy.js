@@ -19,259 +19,259 @@ window.esdocSearchIndex = [
   ],
   [
     "application lib/application.js~application,application",
-    "test-file/test/application_test.js.html#lineNumber9",
+    "test-file/test/application.test.js.html#lineNumber9",
     "Application",
     "test"
   ],
   [
     "application#_parseconfig application#_parseconfig,application#_parseconfig",
-    "test-file/test/application_test.js.html#lineNumber70",
+    "test-file/test/application.test.js.html#lineNumber70",
     "Application #_parseConfig()",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber104",
+    "test-file/test/application.test.js.html#lineNumber104",
     "Application #_parseConfig() should completes with an array if the parsed JSON configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber111",
+    "test-file/test/application.test.js.html#lineNumber111",
     "Application #_parseConfig() should completes with an array if the parsed YAML configuration is valid",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber118",
+    "test-file/test/application.test.js.html#lineNumber118",
     "Application #_parseConfig() should handle the loading of certificate files",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber71",
+    "test-file/test/application.test.js.html#lineNumber71",
     "Application #_parseConfig() should throw an error if the configuration has an invalid format",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber82",
+    "test-file/test/application.test.js.html#lineNumber82",
     "Application #_parseConfig() should throw an error if the parsed JSON configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber93",
+    "test-file/test/application.test.js.html#lineNumber93",
     "Application #_parseConfig() should throw an error if the parsed YAML configuration has no `routes` and no `target` properties",
     "test"
   ],
   [
     "application#debug lib/application.js~application#debug,application#debug",
-    "test-file/test/application_test.js.html#lineNumber14",
+    "test-file/test/application.test.js.html#lineNumber14",
     "Application #debug",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber15",
+    "test-file/test/application.test.js.html#lineNumber15",
     "Application #debug should be `false` in production environment",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber20",
+    "test-file/test/application.test.js.html#lineNumber20",
     "Application #debug should be `true` in development environment",
     "test"
   ],
   [
     "application#env lib/application.js~application#env,application#env",
-    "test-file/test/application_test.js.html#lineNumber29",
+    "test-file/test/application.test.js.html#lineNumber29",
     "Application #env",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber30",
+    "test-file/test/application.test.js.html#lineNumber30",
     "Application #env should be \"development\" if the NODE_ENV environment variable is not set",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber35",
+    "test-file/test/application.test.js.html#lineNumber35",
     "Application #env should equal the value of `NODE_ENV` environment variable when it is set",
     "test"
   ],
   [
     "application#init lib/application.js~application#init,application#init",
-    "test-file/test/application_test.js.html#lineNumber44",
+    "test-file/test/application.test.js.html#lineNumber44",
     "Application #init()",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber52",
+    "test-file/test/application.test.js.html#lineNumber52",
     "Application #init() should initialize the `servers` property from the JSON configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber59",
+    "test-file/test/application.test.js.html#lineNumber59",
     "Application #init() should initialize the `servers` property from the YAML configuration",
     "test"
   ],
   [
     "",
-    "test-file/test/application_test.js.html#lineNumber45",
+    "test-file/test/application.test.js.html#lineNumber45",
     "Application #init() should initialize the `servers` property from the command line arguments",
     "test"
   ],
   [
     "server lib/server.js~server,server",
-    "test-file/test/server_test.js.html#lineNumber10",
+    "test-file/test/server.test.js.html#lineNumber10",
     "Server",
     "test"
   ],
   [
     "server#_gethostname server#_gethostname,server#_gethostname",
-    "test-file/test/server_test.js.html#lineNumber78",
+    "test-file/test/server.test.js.html#lineNumber79",
     "Server #_getHostname()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber79",
+    "test-file/test/server.test.js.html#lineNumber80",
     "Server #_getHostname() it should return \"*\" if there is no \"Host\" header in the request",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber83",
+    "test-file/test/server.test.js.html#lineNumber84",
     "Server #_getHostname() it should return the \"Host\" header found in the request, without the port number",
     "test"
   ],
   [
     "server#_normalizeroute server#_normalizeroute,server#_normalizeroute",
-    "test-file/test/server_test.js.html#lineNumber91",
+    "test-file/test/server.test.js.html#lineNumber92",
     "Server #_normalizeRoute()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber92",
+    "test-file/test/server.test.js.html#lineNumber93",
     "Server #_normalizeRoute() it should normalize a port on the local host",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber97",
+    "test-file/test/server.test.js.html#lineNumber98",
     "Server #_normalizeRoute() it should normalize an authority",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber102",
+    "test-file/test/server.test.js.html#lineNumber103",
     "Server #_normalizeRoute() it should normalize an origin",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber107",
+    "test-file/test/server.test.js.html#lineNumber108",
     "Server #_normalizeRoute() it should normalize the HTTP headers",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber113",
+    "test-file/test/server.test.js.html#lineNumber114",
     "Server #_normalizeRoute() it should throw an error if the route has an invalid format",
     "test"
   ],
   [
     "server#_sendstatus server#_sendstatus,server#_sendstatus",
-    "test-file/test/server_test.js.html#lineNumber121",
+    "test-file/test/server.test.js.html#lineNumber122",
     "Server #_sendStatus()",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber140",
+    "test-file/test/server.test.js.html#lineNumber141",
     "Server #_sendStatus() it should set the response body",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber133",
+    "test-file/test/server.test.js.html#lineNumber134",
     "Server #_sendStatus() it should set the response status",
     "test"
   ],
   [
     "server#address lib/server.js~server#address,server#address",
-    "test-file/test/server_test.js.html#lineNumber15",
+    "test-file/test/server.test.js.html#lineNumber16",
     "Server #address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber16",
+    "test-file/test/server.test.js.html#lineNumber17",
     "Server #address should have an \"any IPv4\" address as the default address",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber20",
+    "test-file/test/server.test.js.html#lineNumber21",
     "Server #address should have the same host as the specified one",
     "test"
   ],
   [
     "server#listening lib/server.js~server#listening,server#listening",
-    "test-file/test/server_test.js.html#lineNumber28",
+    "test-file/test/server.test.js.html#lineNumber29",
     "Server #listening",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber29",
+    "test-file/test/server.test.js.html#lineNumber30",
     "Server #listening should return whether the server is listening",
     "test"
   ],
   [
     "server#port lib/server.js~server#port,server#port",
-    "test-file/test/server_test.js.html#lineNumber44",
+    "test-file/test/server.test.js.html#lineNumber45",
     "Server #port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber45",
+    "test-file/test/server.test.js.html#lineNumber46",
     "Server #port should have 3000 as the default port",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber49",
+    "test-file/test/server.test.js.html#lineNumber50",
     "Server #port should have the same port as the specified one",
     "test"
   ],
   [
     "server#routes lib/server.js~server#routes,server#routes",
-    "test-file/test/server_test.js.html#lineNumber57",
+    "test-file/test/server.test.js.html#lineNumber58",
     "Server #routes",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber58",
+    "test-file/test/server.test.js.html#lineNumber59",
     "Server #routes should be empty by default",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber62",
+    "test-file/test/server.test.js.html#lineNumber63",
     "Server #routes should create a default route if a target is specified",
     "test"
   ],
   [
     "",
-    "test-file/test/server_test.js.html#lineNumber68",
+    "test-file/test/server.test.js.html#lineNumber69",
     "Server #routes should normalize the specified targets",
     "test"
   ],
@@ -678,15 +678,15 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "test/application_test.js",
-    "test-file/test/application_test.js.html",
-    "test/application_test.js",
+    "test/application.test.js",
+    "test-file/test/application.test.js.html",
+    "test/application.test.js",
     "testFile"
   ],
   [
-    "test/server_test.js",
-    "test-file/test/server_test.js.html",
-    "test/server_test.js",
+    "test/server.test.js",
+    "test-file/test/server.test.js.html",
+    "test/server.test.js",
     "testFile"
   ]
 ]

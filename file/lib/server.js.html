@@ -43,7 +43,6 @@ const EventEmitter = require(&apos;events&apos;);
 const {createServer, STATUS_CODES} = require(&apos;http&apos;);
 const {createServer: createSecureServer} = require(&apos;https&apos;);
 const {createProxyServer} = require(&apos;http-proxy&apos;);
-const {promisify} = require(&apos;util&apos;);
 
 /**
  * Acts as an intermediary for requests from clients seeking resources from other servers.
@@ -139,17 +138,16 @@ exports.Server = class Server extends EventEmitter {
 
   /**
    * Stops the server from accepting new connections. It does nothing if the server is already closed.
+   * @return {Promise} Completes when the server is finally closed.
    * @emits {*} The &quot;close&quot; event.
    */
   async close() {
-    if (!this.listening) return;
-
-    const close = promisify(this._httpService.close.bind(this._httpService));
-    await close();
-
-    this._httpService = null;
-    this._proxyService = null;
-    this.emit(&apos;close&apos;);
+    return !this.listening ? null : new Promise(resolve =&gt; this._httpService.close(() =&gt; {
+      this._httpService = null;
+      this._proxyService = null;
+      this.emit(&apos;close&apos;);
+      resolve(null);
+    }));
   }
 
   /**
@@ -160,30 +158,32 @@ exports.Server = class Server extends EventEmitter {
    * @emits {*} The &quot;listening&quot; event.
    */
   async listen(port = this.port, address = this.address) {
-    if (this.listening) return this.port;
+    return this.listening ? this.port : new Promise((resolve, reject) =&gt; {
+      this._proxyService = createProxyServer(this._options.proxy);
+      this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
 
-    let requestHandler = this._onHTTPRequest.bind(this);
-    this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);
-    this._httpService.on(&apos;error&apos;, error =&gt; this.emit(&apos;error&apos;, error));
-    this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
+      let requestHandler = this._onHTTPRequest.bind(this);
+      this._httpService = this._options.ssl ? createSecureServer(this._options.ssl, requestHandler) : createServer(requestHandler);
+      this._httpService.on(&apos;upgrade&apos;, this._onWSRequest.bind(this));
+      this._httpService.on(&apos;error&apos;, err =&gt; {
+        this.emit(&apos;error&apos;, err);
+        if (err.code == &apos;EADDRINUSE&apos;) reject(err);
+      });
 
-    this._proxyService = createProxyServer(this._options.proxy);
-    this._proxyService.on(&apos;error&apos;, this._onRequestError.bind(this));
-
-    const listen = promisify(this._httpService.listen.bind(this._httpService));
-    await listen(port, address);
-
-    this.emit(&apos;listening&apos;);
-    return this.port;
+      this._httpService.listen(port, address, () =&gt; {
+        this.emit(&apos;listening&apos;);
+        resolve(this.port);
+      });
+    });
   }
 
   /**
    * Gets the host name contained in the headers of the specified request.
-   * @param {http~IncomingMessage} request The request sent by the client.
+   * @param {http~IncomingMessage} req The request sent by the client.
    * @return {string} The host name provided by the specified request, or `*` if the host name could not be determined.
    */
-  _getHostname(request) {
-    let headers = request.headers;
+  _getHostname(req) {
+    let headers = req.headers;
     if (!(&apos;host&apos; in headers)) return &apos;*&apos;;
 
     let index = headers.host.indexOf(&apos;:&apos;);
@@ -224,64 +224,64 @@ exports.Server = class Server extends EventEmitter {
 
   /**
    * Handles an HTTP request to a target.
-   * @param {http~IncomingMessage} request The request sent by the client.
-   * @param {http~ServerResponse} response The response sent by the server.
+   * @param {http~IncomingMessage} req The request sent by the client.
+   * @param {http~ServerResponse} res The response sent by the server.
    * @emits {http~IncomingMessage} The &quot;request&quot; event.
    */
-  _onHTTPRequest(request, response) {
-    this.emit(&apos;request&apos;, request, response);
+  _onHTTPRequest(req, res) {
+    this.emit(&apos;request&apos;, req, res);
 
-    let hostname = this._getHostname(request);
+    let hostname = this._getHostname(req);
     let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
-    if (!this.routes.has(pattern)) this._sendStatus(response, 404);
+    if (!this.routes.has(pattern)) this._sendStatus(res, 404);
     else {
       let target = this.routes.get(pattern);
-      Object.assign(request.headers, target.headers);
-      this._proxyService.web(request, response, {target: target.uri});
+      Object.assign(req.headers, target.headers);
+      this._proxyService.web(req, res, {target: target.uri});
     }
   }
 
   /**
    * Handles the error emitted if a request to a target fails.
-   * @param {Error} error The emitted error event.
-   * @param {http~IncomingMessage} request The request sent by the client.
-   * @param {http~ServerResponse} response The response sent by the server.
+   * @param {Error} err The emitted error event.
+   * @param {http~IncomingMessage} req The request sent by the client.
+   * @param {http~ServerResponse} res The response sent by the server.
    * @emits {Error} The &quot;error&quot; event.
    */
-  _onRequestError(error, request, response) {
-    this.emit(&apos;error&apos;, error);
-    this._sendStatus(response, 502);
+  _onRequestError(err, req, res) {
+    this.emit(&apos;error&apos;, err);
+    this._sendStatus(res, 502);
   }
 
   /**
    * Handles a WebSocket request to a target.
-   * @param {http~IncomingMessage} request The request sent by the client.
+   * @param {http~IncomingMessage} req The request sent by the client.
    * @param {net~Socket} socket The network socket between the server and client.
    * @param {Buffer} head The first packet of the upgraded stream.
    */
-  _onWSRequest(request, socket, head) {
-    let hostname = this._getHostname(request);
+  _onWSRequest(req, socket, head) {
+    let hostname = this._getHostname(req);
     let pattern = this.routes.has(hostname) ? hostname : &apos;*&apos;;
     if (this.routes.has(pattern)) {
       let target = this.routes.get(pattern);
-      Object.assign(request.headers, target.headers);
-      this._proxyService.ws(request, socket, head, {target: target.uri});
+      Object.assign(req.headers, target.headers);
+      this._proxyService.ws(req, socket, head, {target: target.uri});
     }
   }
 
   /**
    * Sends an HTTP status code and terminates the specified server response.
-   * @param {http~ServerResponse} response The server response.
+   * @param {http~ServerResponse} res The server response.
    * @param {number} statusCode The HTTP status code to send.
    */
-  _sendStatus(response, statusCode) {
+  _sendStatus(res, statusCode) {
     let message = STATUS_CODES[statusCode];
-    response.writeHead(statusCode, {
+    res.writeHead(statusCode, {
       &apos;Content-Length&apos;: Buffer.byteLength(message),
       &apos;Content-Type&apos;: &apos;text/plain; charset=utf-8&apos;
     });
 
-    response.end(message);
+    res.end(message);
   }
 };
 </code></pre>
