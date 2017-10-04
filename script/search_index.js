@@ -606,9 +606,9 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "lib/application.js~application.log_format",
-    "class/lib/application.js~Application.html#static-get-LOG_FORMAT",
-    "lib/application.js~Application.LOG_FORMAT",
+    "lib/application.js~application.logformat",
+    "class/lib/application.js~Application.html#static-get-logFormat",
+    "lib/application.js~Application.logFormat",
     "member"
   ],
   [
@@ -666,15 +666,15 @@ window.esdocSearchIndex = [
     "member"
   ],
   [
-    "lib/server.js~server.default_address",
-    "class/lib/server.js~Server.html#static-get-DEFAULT_ADDRESS",
-    "lib/server.js~Server.DEFAULT_ADDRESS",
+    "lib/server.js~server.defaultaddress",
+    "class/lib/server.js~Server.html#static-get-defaultAddress",
+    "lib/server.js~Server.defaultAddress",
     "member"
   ],
   [
-    "lib/server.js~server.default_port",
-    "class/lib/server.js~Server.html#static-get-DEFAULT_PORT",
-    "lib/server.js~Server.DEFAULT_PORT",
+    "lib/server.js~server.defaultport",
+    "class/lib/server.js~Server.html#static-get-defaultPort",
+    "lib/server.js~Server.defaultPort",
     "member"
   ],
   [
