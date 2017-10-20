@@ -1,13 +1,13 @@
 # Routing Table
 port: 4000
 routes:
-  re://^/ellipsis/api:
+  - http://jbcurtin.io/
+  - expression: re://^/ellipsis/api
     port: 3000
     host: localhost
     headers:
       X-Awesome: sauce
-
-  re://^/ellipsis/:
+  - expression: re://^/ellipsis
     port: 3000
     host: localhost
     headers:
