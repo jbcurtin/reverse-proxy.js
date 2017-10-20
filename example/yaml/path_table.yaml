@@ -1,0 +1,15 @@
+# Routing Table
+port: 4000
+routes:
+  re://^/ellipsis/api:
+    port: 3000
+    host: localhost
+    headers:
+      X-Awesome: sauce
+
+  re://^/ellipsis/:
+    port: 3000
+    host: localhost
+    headers:
+      X-Awesome: sauce
+
