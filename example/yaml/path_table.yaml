@@ -3,7 +3,7 @@ port: 4000
 routes:
   - http://jbcurtin.io/
   - expression: re://^/ellipsis/api
-    port: 3000
+    port: 5000
     host: localhost
     headers:
       X-Awesome: sauce
